@@ -1,0 +1,19 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+reward-preprocessing = {editable = true, path = "."}
+
+[dev-packages]
+pytest = "*"
+# pipenv doesn't install pre-releases by default but black is only available
+# as a pre-release, so we specify a version number explicitly to work around that:
+black = "==21.6b0"
+flake8 = "*"
+pytype = "*"
+flake8-isort = "*"
+
+[requires]
+python_version = "3.9"
