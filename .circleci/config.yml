@@ -1,0 +1,53 @@
+version: 2.1
+
+executors:
+  main_executor:
+    docker:
+      - image: ejenner/reward_preprocessing:dependencies
+        auth:
+          username: $DOCKERHUB_USERNAME
+          password: $DOCKERHUB_PASSWORD
+    working_directory: /reward_preprocessing
+    environment:
+      # If you change these, also change ci/code_checks.sh
+      SRC_FILES: src/ tests/ setup.py
+
+commands:
+  setup:
+    description: "Set up the project."
+    steps:
+      - checkout  # Check out the code from Git
+      - run:
+          name: install reward_preprocessing
+          # Build a wheel then install to avoid copying whole directory (pip issue #2195)
+          command: |
+            pipenv run python setup.py sdist bdist_wheel
+            pipenv run pip install dist/reward_preprocessing-*.whl
+
+jobs:
+  test:
+    executor: main_executor
+    steps:
+      - setup
+      - run:
+          name: Run tests
+          command: pipenv run pytest
+  lint:
+    executor: main_executor
+    steps:
+      - setup
+      - run:
+          name: flake8
+          command: pipenv run flake8 $SRC_FILES
+      - run:
+          name: black
+          command: pipenv run black --check $SRC_FILES
+      - run:
+          name: pytype
+          command: pipenv run pytype $SRC_FILES
+
+workflows:
+  main:
+    jobs:
+      - lint
+      - test
