@@ -4,7 +4,12 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-reward-preprocessing = {editable = true, path = "."}
+torch = "*"
+stable-baselines3 = "*"
+sacred = "*"
+numpy = "*"
+gym = "*"
+gym-minigrid = "*"
 
 [dev-packages]
 pytest = "*"
