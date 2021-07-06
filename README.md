@@ -15,6 +15,19 @@ ci/setup.sh
 virtual environment.
 Use `pipenv shell` to start a shell inside this virtual environment.
 
+## Running experiments
+You can train an agent using
+```
+pipenv run python src/reward_preprocessing/train_agent.py
+```
+Arguments are passed using Sacred, e.g.
+```
+pipenv run python src/reward_preprocessing/train_agent.py with steps=10000
+```
+to train for 10000 steps.
+
+The trained agent model and a video recording of the agent are stored via Sacred.
+
 ## Tests
 Run
 ```

@@ -2,6 +2,13 @@
 FROM python:3.9.6-slim as dependencies
 ARG DEBIAN_FRONTEND=noninteractive
 
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    # ffmpeg is needed to capture videos
+    ffmpeg \
+    # git is needed by Sacred
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN pip install pipenv && pip cache purge
 
 WORKDIR /reward_preprocessing
