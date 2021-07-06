@@ -4,9 +4,9 @@ import tempfile
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
 from stable_baselines3 import PPO
-from stable_baselines3.common.vec_env import VecVideoRecorder
 
 from reward_preprocessing.env import create_env, env_ingredient
+from reward_preprocessing.utils import ContinuousVideoRecorder
 
 ex = Experiment("train_agent", ingredients=[env_ingredient])
 ex.observers.append(FileStorageObserver("runs"))
@@ -44,14 +44,14 @@ def main(steps: int, save_path: str, num_frames: int):
         ex.add_artifact(model_path.with_suffix(".zip"))
 
         # record a video of the trained agent
-        env = VecVideoRecorder(
+        env = ContinuousVideoRecorder(
             env,
             str(path),
             record_video_trigger=lambda x: x == 0,
             video_length=num_frames,
             name_prefix="trained_agent",
         )
-        obs = env.reset()
+        obs = env.reset(start_video=True)
         for _ in range(num_frames + 1):
             action, _states = model.predict(obs, deterministic=True)
             obs, reward, done, info = env.step(action)
