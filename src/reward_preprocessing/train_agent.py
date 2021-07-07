@@ -9,7 +9,6 @@ from reward_preprocessing.env import create_env, env_ingredient
 from reward_preprocessing.utils import ContinuousVideoRecorder
 
 ex = Experiment("train_agent", ingredients=[env_ingredient])
-ex.observers.append(FileStorageObserver("runs"))
 
 
 @ex.config
@@ -22,6 +21,14 @@ def config():
     # without an extension (but including a filename).
     save_path = ""
     num_frames = 100
+    run_dir = "runs"
+
+    # Just to be save, we check whether an observer already exists,
+    # to avoid adding multiple copies of the same observer
+    # (see https://github.com/IDSIA/sacred/issues/300)
+    if len(ex.observers) == 0:
+        ex.observers.append(FileStorageObserver(run_dir))
+
     _ = locals()  # make flake8 happy
     del _
 

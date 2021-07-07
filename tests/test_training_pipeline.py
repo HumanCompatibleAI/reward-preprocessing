@@ -2,11 +2,11 @@ from pathlib import Path
 import tempfile
 
 
-def test_training_experiment():
+def test_training_experiment(tmp_path):
     from reward_preprocessing.train_agent import ex
 
     # for now we just check that it works without errors
-    ex.run(config_updates={"steps": 10, "num_frames": 10})
+    ex.run(config_updates={"run_dir": str(tmp_path), "steps": 10, "num_frames": 10})
 
 
 def test_dataset_creation(model_path):
