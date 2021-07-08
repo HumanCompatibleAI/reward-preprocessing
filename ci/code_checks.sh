@@ -8,4 +8,3 @@ set -e  # quit immediately on error
 
 pipenv run flake8 ${SRC_FILES[@]}
 pipenv run black --check ${SRC_FILES[@]}
-pipenv run pytype ${SRC_FILES[@]}

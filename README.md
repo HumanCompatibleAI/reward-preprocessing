@@ -45,7 +45,7 @@ pipenv run pytest
 to run all available tests (or just run `pytest` if the environment is active).
 
 ## Code style and linting
-`ci/code_checks.sh` contains formatting, linting and type checks.
+`ci/code_checks.sh` contains checks for formatting and linting.
 We recommend using it as a pre-commit hook:
 ```
 ln -s ../../ci/code_checks.sh .git/hooks/pre-commit
@@ -56,3 +56,7 @@ To automatically change the formatting (rather than just checking it), run
 ci/format_code.sh
 ```
 Alternatively, you may want to configure your editor to run `black` and `isort` when saving a file.
+
+Run `pipenv run pytype` (or just `pytype` inside the `pipenv` shell) to type check
+the code base. This may take a bit longer than linting, which is why it's not part
+of the pre-commit hook. It's still checked during CI though.
