@@ -10,6 +10,7 @@ sacred = "*"
 numpy = "*"
 gym = "*"
 gym-minigrid = "*"
+tqdm = "*"
 
 [dev-packages]
 pytest = "*"

@@ -2,7 +2,7 @@ from pathlib import Path
 import tempfile
 
 
-def test_training_experiment(tmp_path):
+def test_agent_training_experiment(tmp_path):
     from reward_preprocessing.train_agent import ex
 
     # for now we just check that it works without errors
@@ -18,6 +18,20 @@ def test_dataset_creation(model_path):
             config_updates={
                 "model_path": str(model_path),
                 "save_path": str(path),
-                "num_samples": 10,
+                "train_samples": 10,
+                "test_samples": 10,
             }
         )
+
+
+def test_reward_training_experiment(data_path, tmp_path):
+    from reward_preprocessing.train_reward_model import ex
+
+    ex.run(
+        config_updates={
+            "run_dir": str(tmp_path),
+            "epochs": 1,
+            "batch_size": 2,
+            "data_path": str(data_path),
+        }
+    )

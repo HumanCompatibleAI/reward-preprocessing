@@ -21,7 +21,7 @@ def config():
     # without an extension (but including a filename).
     save_path = ""
     num_frames = 100
-    run_dir = "runs"
+    run_dir = "runs/agent"
 
     # Just to be save, we check whether an observer already exists,
     # to avoid adding multiple copies of the same observer
