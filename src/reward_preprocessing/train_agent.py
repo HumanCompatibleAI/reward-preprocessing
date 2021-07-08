@@ -68,9 +68,15 @@ def main(steps: int, save_path: str, num_frames: int, eval_episodes: int):
             name_prefix="trained_agent",
         )
         obs = env.reset(start_video=True)
+        # The sequence of observations can be used as a check in the
+        # determinism test (see tests/test_determinism.py).
+        # The rewards are not enough for this, because for untrained
+        # agents they are often just all 0.
+        observations = []
         for _ in range(num_frames + 1):
             action, _states = model.predict(obs, deterministic=True)
             obs, reward, done, info = env.step(action)
+            observations.append(obs)
             if done:
                 obs = env.reset()
 
@@ -78,4 +84,4 @@ def main(steps: int, save_path: str, num_frames: int, eval_episodes: int):
         video_path = Path(env.video_recorder.path)
         ex.add_artifact(video_path)
 
-    return mean_reward, std_reward
+    return mean_reward, std_reward, observations
