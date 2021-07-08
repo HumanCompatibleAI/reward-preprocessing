@@ -21,6 +21,7 @@ def config():
 
 
 @env_ingredient.capture
-def create_env(name: str):
+def create_env(name: str, _seed: int):
     env = DummyVecEnv([lambda: _make_env(name)])
+    env.seed(_seed)
     return env

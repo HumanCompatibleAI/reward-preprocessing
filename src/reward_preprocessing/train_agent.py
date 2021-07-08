@@ -4,6 +4,7 @@ import tempfile
 from sacred import Experiment
 from sacred.observers import FileStorageObserver
 from stable_baselines3 import PPO
+from stable_baselines3.common.evaluation import evaluate_policy
 
 from reward_preprocessing.env import create_env, env_ingredient
 from reward_preprocessing.utils import ContinuousVideoRecorder
@@ -22,6 +23,7 @@ def config():
     save_path = ""
     num_frames = 100
     run_dir = "runs/agent"
+    eval_episodes = 0
 
     # Just to be save, we check whether an observer already exists,
     # to avoid adding multiple copies of the same observer
@@ -34,11 +36,18 @@ def config():
 
 
 @ex.automain
-def main(steps: int, save_path: str, num_frames: int):
+def main(steps: int, save_path: str, num_frames: int, eval_episodes: int):
     env = create_env()
 
     model = PPO("MlpPolicy", env, verbose=1)
     model.learn(total_timesteps=steps)
+
+    if eval_episodes:
+        mean_reward, std_reward = evaluate_policy(
+            model, env, n_eval_episodes=eval_episodes
+        )
+    else:
+        mean_reward, std_reward = None, None
 
     with tempfile.TemporaryDirectory() as dirname:
         path = Path(dirname)
@@ -68,3 +77,5 @@ def main(steps: int, save_path: str, num_frames: int):
         env.close()
         video_path = Path(env.video_recorder.path)
         ex.add_artifact(video_path)
+
+    return mean_reward, std_reward
