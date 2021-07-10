@@ -15,6 +15,7 @@ class RewardModel(nn.Module, ABC):
     """
 
     def __init__(self, state_shape: Tuple[int]):
+        super().__init__()
         self.state_shape = state_shape
 
     @abstractmethod
