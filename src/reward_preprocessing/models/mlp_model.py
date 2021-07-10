@@ -1,13 +1,18 @@
+from typing import Tuple
+
+import numpy as np
 import torch
 import torch.nn as nn
 
 from reward_preprocessing.transition import Transition
 
+from .reward_model import RewardModel
 
-class MlpRewardModel(nn.Module):
-    def __init__(self, observation_size: int):
-        super().__init__()
-        num_features = 2 * observation_size
+
+class MlpRewardModel(RewardModel):
+    def __init__(self, state_shape: Tuple[int]):
+        super().__init__(state_shape)
+        num_features = 2 * np.product(state_shape)
         self.net = nn.Sequential(
             nn.Linear(num_features, 64),
             nn.Tanh(),

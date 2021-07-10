@@ -38,7 +38,7 @@ class RewardData(torch.utils.data.Dataset):
         self.data = np.load(path.with_suffix(".npz"), mmap_mode=mmap_mode)
         self.mode = "train" if train else "test"
         self.transform = transform
-        self.observation_size = np.product(self.data[f"{self.mode}_states"].shape[1:])
+        self.state_shape = self.data[f"{self.mode}_states"].shape[1:]
 
     def __getitem__(self, k):
         state = self.data[f"{self.mode}_states"][k]

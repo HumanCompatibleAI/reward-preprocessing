@@ -78,7 +78,7 @@ def main(
     else:
         device = torch.device("cpu")
 
-    model = MlpRewardModel(train_data.observation_size).to(device)
+    model = MlpRewardModel(train_data.state_shape).to(device)
     optimizer = torch.optim.Adam(model.parameters())
     loss_fn = torch.nn.MSELoss()
 
