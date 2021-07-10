@@ -14,7 +14,7 @@ class RewardModel(nn.Module, ABC):
     in the future.
     """
 
-    def __init__(self, state_shape: Tuple[int]):
+    def __init__(self, state_shape: Tuple[int, ...]):
         super().__init__()
         self.state_shape = state_shape
 

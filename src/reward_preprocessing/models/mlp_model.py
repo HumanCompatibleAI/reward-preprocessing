@@ -10,7 +10,7 @@ from .reward_model import RewardModel
 
 
 class MlpRewardModel(RewardModel):
-    def __init__(self, state_shape: Tuple[int]):
+    def __init__(self, state_shape: Tuple[int, ...]):
         super().__init__(state_shape)
         num_features = 2 * np.product(state_shape)
         self.net = nn.Sequential(
