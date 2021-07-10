@@ -15,8 +15,8 @@ class Transition:
 
     def apply(self, fn):
         state = None if self.state is None else fn(self.state)
-        action = None if self.state is None else fn(self.action)
-        next_state = None if self.state is None else fn(self.next_state)
+        action = None if self.action is None else fn(self.action)
+        next_state = None if self.next_state is None else fn(self.next_state)
         return Transition(state, action, next_state)
 
     def to(self, device):
