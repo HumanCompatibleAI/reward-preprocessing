@@ -39,11 +39,17 @@ def main(model_path: str, save_path: str, train_samples: int, test_samples: int)
             states[mode].append(obs)
             action, _ = model.predict(obs, deterministic=True)
             actions[mode].append(action)
-            obs, reward, done, _ = env.step(action)
-            next_states[mode].append(obs)
+            obs, reward, done, info = env.step(action)
+            # the environment automatically resets (because it's vectorized),
+            # so if the episode was finished, then obs is already the observation
+            # for the start of the next episode. So in this case,
+            # we make sure to use the actual final state as the next_state.
+            if done[0]:
+                next_state = info[0]["terminal_observation"][None]
+            else:
+                next_state = obs
+            next_states[mode].append(next_state)
             rewards[mode].append(reward)
-            if done:
-                obs = env.reset()
 
     env.close()
 

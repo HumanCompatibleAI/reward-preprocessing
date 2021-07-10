@@ -57,8 +57,6 @@ def data_path(env, tmp_path):
             obs, reward, done, _ = env.step(action)
             next_states[mode].append(obs)
             rewards[mode].append(reward)
-            if done:
-                obs = env.reset()
 
     np.savez(
         str(path),

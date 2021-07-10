@@ -77,8 +77,6 @@ def main(steps: int, save_path: str, num_frames: int, eval_episodes: int):
             action, _states = model.predict(obs, deterministic=True)
             obs, reward, done, info = env.step(action)
             observations.append(obs)
-            if done:
-                obs = env.reset()
 
         env.close()
         video_path = Path(env.video_recorder.path)
