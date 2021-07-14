@@ -13,6 +13,7 @@ def test_dummy_potential():
     gamma = 0.9
     shaping = PotentialShaping(model, torch.sum, gamma)
 
+    torch.manual_seed(0)
     # create a random transition
     state = torch.randn(1, 5, 5)
     action = None
