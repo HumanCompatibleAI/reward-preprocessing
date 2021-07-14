@@ -1,3 +1,4 @@
+"""Module for datasets consisting of transition-reward pairs."""
 from pathlib import Path
 from typing import Callable, List, Tuple
 
@@ -60,7 +61,7 @@ class RewardData(torch.utils.data.Dataset):
         self.data.close()
 
 
-def to_torch(x: Tuple[Transition, float]):
+def to_torch(x: Tuple[Transition, float]) -> Tuple[Transition, torch.Tensor]:
     transition, reward = x
     transition = transition.apply(
         lambda x: torch.from_numpy(x) if isinstance(x, np.ndarray) else torch.tensor(x)
@@ -68,7 +69,7 @@ def to_torch(x: Tuple[Transition, float]):
     # when we want pytorch tensors, we'll almost always want float as the dtype
     # to pass it into our models
     transition = transition.apply(lambda x: x.float())
-    return transition, reward
+    return transition, torch.tensor(reward).float()
 
 
 def get_worker_init_fn(path: Path, load_to_memory: bool = True):
@@ -93,7 +94,9 @@ def get_worker_init_fn(path: Path, load_to_memory: bool = True):
     return worker_init_fn
 
 
-def collate_fn(data: List[Tuple[Transition, float]]):
+def collate_fn(
+    data: List[Tuple[Transition, torch.Tensor]]
+) -> Tuple[Transition, torch.Tensor]:
     """Custom collate function for RewardData.
 
     Since RewardData returns Transition instances, the default Pytorch
@@ -106,5 +109,5 @@ def collate_fn(data: List[Tuple[Transition, float]]):
             torch.stack([t.action for t, r in data]),
             torch.stack([t.next_state for t, r in data]),
         ),
-        torch.tensor([r for t, r in data]),
+        torch.stack([r for t, r in data]),
     )

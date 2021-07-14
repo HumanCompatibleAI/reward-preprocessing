@@ -1,3 +1,6 @@
+"""Experiment that creates a dataset of transition-reward pairs,
+which can then be used to train a reward model in a supervised fashion.
+"""
 from pathlib import Path
 
 import numpy as np
@@ -12,7 +15,9 @@ ex = Experiment("create_rollouts", ingredients=[env_ingredient])
 
 @ex.config
 def config():
+    # path where the agent is saved (without .zip extension)
     model_path = ""
+    # path where the dataset should be saved to (without .npz extension)
     save_path = ""
     train_samples = 10000
     test_samples = 10000

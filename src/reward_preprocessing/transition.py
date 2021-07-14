@@ -1,4 +1,13 @@
-from typing import Callable, Iterator, Tuple
+"""Module implementing transitions, i.e. (s, a, s') tuples.
+
+Transition is the class representing transitions throughout
+this project.
+
+get_transitions is a helper function to generate a set
+of transition-reward pairs from an environment and a policy.
+"""
+from dataclasses import dataclass
+from typing import Any, Callable, Iterator, Tuple
 
 import numpy as np
 from stable_baselines3.common.base_class import BaseAlgorithm

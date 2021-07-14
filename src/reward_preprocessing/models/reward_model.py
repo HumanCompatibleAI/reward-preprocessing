@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Tuple
 
+import torch
 import torch.nn as nn
 
 from reward_preprocessing.transition import Transition
@@ -19,5 +20,5 @@ class RewardModel(nn.Module, ABC):
         self.state_shape = state_shape
 
     @abstractmethod
-    def forward(self, transition: Transition):
+    def forward(self, transition: Transition) -> torch.Tensor:
         pass

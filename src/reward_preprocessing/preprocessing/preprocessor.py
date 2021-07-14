@@ -1,3 +1,5 @@
+import torch
+
 from reward_preprocessing.models import RewardModel
 from reward_preprocessing.transition import Transition
 
@@ -22,7 +24,7 @@ class Preprocessor(RewardModel):
         self.model = model
         self.freeze_model()
 
-    def forward(self, transition: Transition):
+    def forward(self, transition: Transition) -> torch.Tensor:
         return self.model(transition)
 
     def freeze_model(self):
