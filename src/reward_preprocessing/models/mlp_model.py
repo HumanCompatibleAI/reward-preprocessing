@@ -26,4 +26,6 @@ class MlpRewardModel(RewardModel):
         # should remain the batch axis
         x = torch.stack([transition.state, transition.next_state], dim=1)
         x = x.flatten(start_dim=1)
-        return self.net(x)
+        # the squeeze gets rid of the final singleton dimension produced by the last
+        # linear layer
+        return self.net(x).squeeze(dim=-1)

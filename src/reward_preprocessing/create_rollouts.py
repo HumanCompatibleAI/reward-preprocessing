@@ -5,6 +5,7 @@ from sacred import Experiment
 from stable_baselines3 import PPO
 
 from reward_preprocessing.env import create_env, env_ingredient
+from reward_preprocessing.transition import get_transitions
 
 ex = Experiment("create_rollouts", ingredients=[env_ingredient])
 
@@ -30,25 +31,14 @@ def main(model_path: str, save_path: str, train_samples: int, test_samples: int)
     rewards = {}
 
     for mode, num_samples in zip(["train", "test"], [train_samples, test_samples]):
-        obs = env.reset()
         states[mode] = []
         actions[mode] = []
         next_states[mode] = []
         rewards[mode] = []
-        for _ in range(num_samples):
-            states[mode].append(obs)
-            action, _ = model.predict(obs, deterministic=True)
-            actions[mode].append(action)
-            obs, reward, done, info = env.step(action)
-            # the environment automatically resets (because it's vectorized),
-            # so if the episode was finished, then obs is already the observation
-            # for the start of the next episode. So in this case,
-            # we make sure to use the actual final state as the next_state.
-            if done[0]:
-                next_state = info[0]["terminal_observation"][None]
-            else:
-                next_state = obs
-            next_states[mode].append(next_state)
+        for transition, reward in get_transitions(env, model, num=num_samples):
+            states[mode].append(transition.state)
+            actions[mode].append(transition.action)
+            next_states[mode].append(transition.next_state)
             rewards[mode].append(reward)
 
     env.close()

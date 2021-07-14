@@ -62,7 +62,9 @@ class RewardData(torch.utils.data.Dataset):
 
 def to_torch(x: Tuple[Transition, float]):
     transition, reward = x
-    transition = transition.apply(torch.from_numpy)
+    transition = transition.apply(
+        lambda x: torch.from_numpy(x) if isinstance(x, np.ndarray) else torch.tensor(x)
+    )
     # when we want pytorch tensors, we'll almost always want float as the dtype
     # to pass it into our models
     transition = transition.apply(lambda x: x.float())
