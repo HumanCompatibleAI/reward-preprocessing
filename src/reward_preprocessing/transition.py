@@ -15,6 +15,7 @@ from stable_baselines3.common.policies import BasePolicy
 from stable_baselines3.common.vec_env import VecEnv
 
 
+@dataclass
 class Transition:
     """A transition in an MDP, consisting of a state, an action and a following state
     (the reward is not part of this class).
@@ -25,10 +26,9 @@ class Transition:
     be added in the future.
     """
 
-    def __init__(self, state=None, action=None, next_state=None):
-        self.state = state
-        self.action = action
-        self.next_state = next_state
+    state: Any = None
+    action: Any = None
+    next_state: Any = None
 
     def apply(self, fn):
         state = None if self.state is None else fn(self.state)
