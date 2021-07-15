@@ -10,9 +10,6 @@ class MockEnv(gym.Env):
     and the episode ends when it reaches 0 or 10.
     """
 
-    # metadata = {'render.modes': ['human', 'rgb_array'],
-    #             'video.frames_per_second' : 3}
-    # reward_range = (-float('inf'), float('inf'))
     def __init__(self):
         super().__init__()
         self.pos = 5
