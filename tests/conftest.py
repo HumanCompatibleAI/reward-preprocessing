@@ -45,7 +45,9 @@ class MockEnv(gym.Env):
         pass
 
 
-gym.envs.register(id="MockEnv-v0", entry_point=MockEnv, max_episode_steps=100)
+gym.envs.register(
+    id="reward_preprocessing/MockEnv-v0", entry_point=MockEnv, max_episode_steps=100
+)
 
 
 @pytest.fixture
@@ -64,7 +66,7 @@ def mock_env():
 
     from stable_baselines3.common.vec_env import DummyVecEnv
 
-    env = DummyVecEnv([lambda: gym.make("MockEnv-v0")])
+    env = DummyVecEnv([lambda: gym.make("reward_preprocessing/MockEnv-v0")])
     yield env
     env.close()
 
@@ -75,7 +77,7 @@ def mock_venv():
 
     from stable_baselines3.common.vec_env import DummyVecEnv
 
-    env = DummyVecEnv([lambda: gym.make("MockEnv-v0")] * 2)
+    env = DummyVecEnv([lambda: gym.make("reward_preprocessing/MockEnv-v0")] * 2)
     yield env
     env.close()
 
