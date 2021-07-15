@@ -92,29 +92,42 @@ def get_transitions(
         )
 
     if isinstance(policy, BaseAlgorithm):
+        original_env = policy.env
         policy.set_env(venv)
 
-    states = venv.reset()
+    # the try ... finally block is here so that if an exception occurs
+    # which is caught outside this function, the original environment is still
+    # restored
+    try:
+        states = venv.reset()
 
-    num_sampled = 0
-    while num is None or num_sampled < num:
-        acts = get_action(states)
-        next_states, rews, dones, infos = venv.step(acts)
+        num_sampled = 0
+        while num is None or num_sampled < num:
+            acts = get_action(states)
+            next_states, rews, dones, infos = venv.step(acts)
 
-        for state, act, next_state, rew, done, info in zip(
-            states, acts, next_states, rews, dones, infos
-        ):
-            if done:
-                # actual obs is inaccurate, so we use the one inserted into step info
-                # by stable baselines wrapper
-                real_ob = info["terminal_observation"]
+            for state, act, next_state, rew, done, info in zip(
+                states, acts, next_states, rews, dones, infos
+            ):
+                if done:
+                    # actual obs is inaccurate, so we use the one
+                    # inserted into step info by stable baselines wrapper
+                    real_ob = info["terminal_observation"]
+                else:
+                    real_ob = next_state
+
+                yield Transition(state, act, real_ob), rew
+                num_sampled += 1
+
+                if num is not None and num_sampled >= num:
+                    break
+
+            states = next_states
+    finally:
+        if isinstance(policy, BaseAlgorithm):
+            if original_env is not None:
+                policy.set_env(original_env)
             else:
-                real_ob = next_state
-
-            yield Transition(state, act, real_ob), rew
-            num_sampled += 1
-
-            if num is not None and num_sampled >= num:
-                break
-
-        states = next_states
+                # This happens if the original policy didn't have an environment
+                # attached, then we remove the env again
+                policy.env = None
