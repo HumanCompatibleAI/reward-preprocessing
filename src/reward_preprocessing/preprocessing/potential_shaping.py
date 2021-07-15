@@ -1,6 +1,7 @@
 """This module defines several preprocessors that add
 a potential shaping to the reward (a particular transformation
 that leaves the optimal policy unchanged).
+
 A potential shaping is fully defined by its potential, which maps
 states to floats. PotentialShaping is the most general case,
 while the other classes in this module are helper classes
