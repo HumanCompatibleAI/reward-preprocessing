@@ -69,7 +69,9 @@ def to_torch(x: Tuple[Transition, float]) -> Tuple[Transition, torch.Tensor]:
     # when we want pytorch tensors, we'll almost always want float as the dtype
     # to pass it into our models
     transition = transition.apply(lambda x: x.float())
-    return transition, torch.tensor(reward).float()
+    reward = torch.tensor(reward).float()
+
+    return transition, reward
 
 
 def get_worker_init_fn(path: Path, load_to_memory: bool = True):
