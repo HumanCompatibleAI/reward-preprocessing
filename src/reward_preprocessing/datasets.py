@@ -1,11 +1,31 @@
+"""Module for datasets consisting of transition-reward pairs."""
 from pathlib import Path
-from typing import Callable, Iterable
+from typing import Callable, List, Tuple
 
 import numpy as np
 import torch
 
+from reward_preprocessing.transition import Transition
+
 
 class RewardData(torch.utils.data.Dataset):
+    """Dataset of transition-reward pairs.
+
+    Without any transforms, the outputs are Tuples consisting
+    of a Transition instance and a scalar reward value for that
+    transition.
+
+    Args:
+        path: path to the stored dataset (in .npz format).
+            Doesn't need to contain the .npz extension.
+        train: whether to use the training or test set.
+        transform: transforms to apply
+        load_to_memory: whether to load the dataset to memory
+            or leave it on disk and read it from there on demand.
+            Default is to load to memory (which makes sense for small datasets).
+            If you use very large datasets, you may have to change that.
+    """
+
     def __init__(
         self,
         path: Path,
@@ -19,7 +39,7 @@ class RewardData(torch.utils.data.Dataset):
         self.data = np.load(path.with_suffix(".npz"), mmap_mode=mmap_mode)
         self.mode = "train" if train else "test"
         self.transform = transform
-        self.observation_size = np.product(self.data[f"{self.mode}_states"].shape[1:])
+        self.state_shape = self.data[f"{self.mode}_states"].shape[1:]
 
     def __getitem__(self, k):
         state = self.data[f"{self.mode}_states"][k]
@@ -27,7 +47,7 @@ class RewardData(torch.utils.data.Dataset):
         next_state = self.data[f"{self.mode}_next_states"][k]
         reward = self.data[f"{self.mode}_rewards"][k]
 
-        out = (state, action, next_state), reward
+        out = Transition(state, action, next_state), reward
 
         if self.transform:
             out = self.transform(out)
@@ -41,33 +61,17 @@ class RewardData(torch.utils.data.Dataset):
         self.data.close()
 
 
-class FilterObservations:
-    def __init__(self, keep: Iterable[str] = set()):
-        self.fields = ["state", "action", "next_state"]
-        keep = set(keep)
-        if not keep.issubset(self.fields):
-            raise ValueError(
-                f"Unknown field names: {keep.difference(self.fields)}. "
-                f"Valid field names are {self.fields}"
-            )
-        self.keep = keep
+def to_torch(x: Tuple[Transition, float]) -> Tuple[Transition, torch.Tensor]:
+    transition, reward = x
+    transition = transition.apply(
+        lambda x: torch.from_numpy(x) if isinstance(x, np.ndarray) else torch.tensor(x)
+    )
+    # when we want pytorch tensors, we'll almost always want float as the dtype
+    # to pass it into our models
+    transition = transition.apply(lambda x: x.float())
+    reward = torch.tensor(reward).float()
 
-    def __call__(self, x):
-        obs, reward = x
-        return (
-            tuple(obs[i] for i, field in enumerate(self.fields) if field in self.keep),
-            reward,
-        )
-
-
-def stack_observations(x):
-    obs, reward = x
-    return np.stack(obs, axis=0), reward
-
-
-def to_torch(x):
-    obs, reward = x
-    return torch.from_numpy(obs).float(), reward
+    return transition, reward
 
 
 def get_worker_init_fn(path: Path, load_to_memory: bool = True):
@@ -90,3 +94,22 @@ def get_worker_init_fn(path: Path, load_to_memory: bool = True):
         info.dataset.data = np.load(path.with_suffix(".npz"), mmap_mode=mmap_mode)
 
     return worker_init_fn
+
+
+def collate_fn(
+    data: List[Tuple[Transition, torch.Tensor]]
+) -> Tuple[Transition, torch.Tensor]:
+    """Custom collate function for RewardData.
+
+    Since RewardData returns Transition instances, the default Pytorch
+    collate function doesn't work for it. Use this one instead:
+    >>> dl = DataLoader(dataset, collate_fn=collate_fn, ...)
+    """
+    return (
+        Transition(
+            torch.stack([t.state for t, r in data]),
+            torch.stack([t.action for t, r in data]),
+            torch.stack([t.next_state for t, r in data]),
+        ),
+        torch.stack([r for t, r in data]),
+    )

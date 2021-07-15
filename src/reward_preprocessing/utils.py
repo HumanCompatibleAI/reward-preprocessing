@@ -5,6 +5,10 @@ from stable_baselines3.common.vec_env.base_vec_env import VecEnvObs
 
 
 class ContinuousVideoRecorder(VecVideoRecorder):
+    """Modification of the VecVideoRecorder that doesn't restart
+    the video when an episode ends.
+    """
+
     def reset(self, start_video=False) -> VecEnvObs:
         obs = self.venv.reset()
         if start_video:

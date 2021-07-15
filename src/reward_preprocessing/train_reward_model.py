@@ -7,14 +7,12 @@ import torch
 from tqdm import tqdm
 
 from reward_preprocessing.datasets import (
-    FilterObservations,
     RewardData,
+    collate_fn,
     get_worker_init_fn,
-    stack_observations,
     to_torch,
 )
 from reward_preprocessing.models import MlpRewardModel
-from reward_preprocessing.utils import ComposeTransforms
 
 ex = Experiment("train_reward_model")
 
@@ -49,9 +47,7 @@ def main(
 ):
     path = Path(data_path)
 
-    transform = ComposeTransforms(
-        [FilterObservations({"state", "next_state"}), stack_observations, to_torch]
-    )
+    transform = to_torch
 
     train_data = RewardData(path, transform=transform, train=True)
     test_data = RewardData(path, transform=transform, train=False)
@@ -64,6 +60,7 @@ def main(
         # workaround for https://github.com/numpy/numpy/issues/18124
         # see docstring of get_worker_init_fn for details
         worker_init_fn=get_worker_init_fn(path),
+        collate_fn=collate_fn,
     )
     test_loader = torch.utils.data.DataLoader(
         test_data,
@@ -73,6 +70,7 @@ def main(
         # workaround for https://github.com/numpy/numpy/issues/18124
         # see docstring of get_worker_init_fn for details
         worker_init_fn=get_worker_init_fn(path),
+        collate_fn=collate_fn,
     )
 
     if torch.cuda.is_available():
@@ -80,7 +78,7 @@ def main(
     else:
         device = torch.device("cpu")
 
-    model = MlpRewardModel(train_data.observation_size).to(device)
+    model = MlpRewardModel(train_data.state_shape).to(device)
     optimizer = torch.optim.Adam(model.parameters())
     loss_fn = torch.nn.MSELoss()
 

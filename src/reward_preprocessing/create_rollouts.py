@@ -1,3 +1,6 @@
+"""Experiment that creates a dataset of transition-reward pairs,
+which can then be used to train a reward model in a supervised fashion.
+"""
 from pathlib import Path
 
 import numpy as np
@@ -5,13 +8,16 @@ from sacred import Experiment
 from stable_baselines3 import PPO
 
 from reward_preprocessing.env import create_env, env_ingredient
+from reward_preprocessing.transition import get_transitions
 
 ex = Experiment("create_rollouts", ingredients=[env_ingredient])
 
 
 @ex.config
 def config():
+    # path where the agent is saved (without .zip extension)
     model_path = ""
+    # path where the dataset should be saved to (without .npz extension)
     save_path = ""
     train_samples = 10000
     test_samples = 10000
@@ -30,20 +36,15 @@ def main(model_path: str, save_path: str, train_samples: int, test_samples: int)
     rewards = {}
 
     for mode, num_samples in zip(["train", "test"], [train_samples, test_samples]):
-        obs = env.reset()
         states[mode] = []
         actions[mode] = []
         next_states[mode] = []
         rewards[mode] = []
-        for _ in range(num_samples):
-            states[mode].append(obs)
-            action, _ = model.predict(obs, deterministic=True)
-            actions[mode].append(action)
-            obs, reward, done, _ = env.step(action)
-            next_states[mode].append(obs)
+        for transition, reward in get_transitions(env, model, num=num_samples):
+            states[mode].append(transition.state)
+            actions[mode].append(transition.action)
+            next_states[mode].append(transition.next_state)
             rewards[mode].append(reward)
-            if done:
-                obs = env.reset()
 
     env.close()
 
