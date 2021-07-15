@@ -71,7 +71,7 @@ def get_transitions(
     """
     if policy is None:
 
-        def get_action(states):
+        def get_actions(states):
             acts = []
             for _ in range(len(states)):
                 acts.append(venv.action_space.sample())
@@ -79,12 +79,12 @@ def get_transitions(
 
     elif isinstance(policy, (BaseAlgorithm, BasePolicy)):
 
-        def get_action(states):
+        def get_actions(states):
             acts, _ = policy.predict(states, deterministic=deterministic_policy)
             return acts
 
     elif isinstance(policy, Callable):
-        get_action = policy
+        get_actions = policy
     else:
         raise TypeError(
             "Policy must be None, a stable-baselines policy or algorithm, "
@@ -103,7 +103,7 @@ def get_transitions(
 
         num_sampled = 0
         while num is None or num_sampled < num:
-            acts = get_action(states)
+            acts = get_actions(states)
             next_states, rews, dones, infos = venv.step(acts)
 
             for state, act, next_state, rew, done, info in zip(
