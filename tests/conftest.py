@@ -21,9 +21,9 @@ class MockEnv(gym.Env):
         action = 2 * action - 1
         self.pos += action
         done = self.pos <= 0 or self.pos >= 10
-        if done and self.pos == 0:
+        if self.pos == 0:
             reward = -1.0
-        elif done and self.pos == 10:
+        elif self.pos == 10:
             reward = 1.0
         else:
             reward = 0.0
