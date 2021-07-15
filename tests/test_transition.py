@@ -86,7 +86,7 @@ def test_generated_transitions_multiple_envs(mock_venv):
     """Test whether transitions are generated correctly if the venv contains
     multiple environments.
 
-    We probabldy don't cover all important cases here but at least check
+    We probably don't cover all important cases here but at least check
     the basics: we have two environments, one of which doesn't terminate
     during the test, while the other one has an episode end before the end
     of the test. We then check that all the transitions that are produced
