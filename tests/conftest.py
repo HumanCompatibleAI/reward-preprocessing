@@ -1,6 +1,8 @@
 import gym
 import numpy as np
 import pytest
+from stable_baselines3 import PPO
+from stable_baselines3.common.vec_env import DummyVecEnv
 
 
 class MockEnv(gym.Env):
@@ -64,8 +66,6 @@ def env():
 def mock_env():
     """Return a very simple mock gym environment."""
 
-    from stable_baselines3.common.vec_env import DummyVecEnv
-
     env = DummyVecEnv([lambda: gym.make("reward_preprocessing/MockEnv-v0")])
     yield env
     env.close()
@@ -75,8 +75,6 @@ def mock_env():
 def mock_venv():
     """Return a very simple mock vectorized environment containing two environments."""
 
-    from stable_baselines3.common.vec_env import DummyVecEnv
-
     env = DummyVecEnv([lambda: gym.make("reward_preprocessing/MockEnv-v0")] * 2)
     yield env
     env.close()
@@ -85,7 +83,6 @@ def mock_venv():
 @pytest.fixture
 def venv():
     """Return a vectorized environment containing multiple environments."""
-    from stable_baselines3.common.vec_env import DummyVecEnv
 
     from reward_preprocessing.env import _make_env
 
@@ -97,7 +94,6 @@ def venv():
 @pytest.fixture
 def model(env):
     """Return an (untrained) dummy agent model."""
-    from stable_baselines3 import PPO
 
     return PPO("MlpPolicy", env)
 
