@@ -1,4 +1,5 @@
 import random
+from typing import List
 
 from gym.spaces import Box, Discrete
 from mazelab import BaseEnv, BaseMaze
@@ -48,6 +49,11 @@ class MazeEnv(BaseEnv):
             low=0, high=len(self.maze.objects), shape=self.maze.size, dtype=np.uint8
         )
         self.action_space = Discrete(len(self.motions))
+
+    def seed(self, seed: int = 0) -> List[int]:
+        super().seed(seed)
+        self.rng = random.Random(seed)
+        return [seed]
 
     def step(self, action):
         motion = self.motions[action]
