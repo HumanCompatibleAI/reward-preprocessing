@@ -3,6 +3,7 @@ from mazelab import BaseEnv, BaseMaze
 from mazelab import DeepMindColor as color
 from mazelab import Object, VonNeumannMotion
 import numpy as np
+import torch
 
 
 class Maze(BaseMaze):
@@ -94,3 +95,11 @@ class MazeEnv(BaseEnv):
 
     def get_image(self):
         return self.maze.to_rgb()
+
+
+def get_agent_position(obs: torch.Tensor) -> int:
+    x_size, y_size = obs.shape
+    agent_positions = (obs == 2).nonzero()
+    assert len(agent_positions) == 1
+    x, y = agent_positions[0]
+    return (x + y * x_size).item()
