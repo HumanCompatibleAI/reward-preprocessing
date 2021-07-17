@@ -72,13 +72,25 @@ class MazeEnv(BaseEnv):
         return self.maze.to_value(), reward, done, {}
 
     def reset(self):
+        self.maze.objects.goal.positions = self.goal_idx
         if self.random_start:
+            available_positions = [
+                pos
+                # free positions are stored as a numpy array, we need a list
+                # to compare to goal position
+                for pos in self.maze.objects.free.positions.tolist()
+                # The "free" object positions are not all empty tiles!
+                # Multiple objects can be at one position, and "free"
+                # just means that there is no wall there, but the goal
+                # might still be on this field. So we need to filter that
+                # out because the agent shouldn't start on top of the goal.
+                if pos not in self.maze.objects.goal.positions
+            ]
             self.maze.objects.agent.positions = [
-                list(random.choice(self.maze.objects.free.positions))
+                list(self.rng.choice(available_positions))
             ]
         else:
             self.maze.objects.agent.positions = [self.start_idx]
-        self.maze.objects.goal.positions = self.goal_idx
         return self.maze.to_value()
 
     def _is_valid(self, position):
