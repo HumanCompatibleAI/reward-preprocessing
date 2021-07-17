@@ -57,7 +57,7 @@ def env():
     """Return a gym environment."""
     from reward_preprocessing.env import create_env
 
-    env = create_env("MiniGrid-Empty-Random-6x6-v0")
+    env = create_env("EmptyMaze-v0")
     yield env
     env.close()
 
@@ -84,9 +84,7 @@ def mock_venv():
 def venv():
     """Return a vectorized environment containing multiple environments."""
 
-    from reward_preprocessing.env import _make_env
-
-    env = DummyVecEnv([lambda: _make_env("MiniGrid-Empty-Random-6x6-v0")] * 5)
+    env = DummyVecEnv([lambda: gym.make("EmptyMaze-v0")] * 5)
     yield env
     env.close()
 

@@ -1,21 +1,21 @@
 import gym
-import gym_minigrid  # noqa: F401
-from gym_minigrid.wrappers import FlatObsWrapper, FullyObsWrapper
 import numpy as np
 
+# register the Maze env
+import reward_preprocessing.env  # noqa: F401
 
-def test_random_minigrid():
-    env = gym.make("MiniGrid-Empty-Random-6x6-v0")
-    env = FullyObsWrapper(env)
-    env = FlatObsWrapper(env)
 
+def test_empty_maze():
+    env = gym.make("EmptyMaze-v0")
+
+    obs = env.reset()
     for _ in range(10):
         action = env.action_space.sample()
         obs, reward, done, info = env.step(action)
         if done:
             obs = env.reset()
         assert isinstance(obs, np.ndarray)
-        assert isinstance(reward, (float, int))
+        assert isinstance(reward, float)
         assert isinstance(done, bool)
         assert isinstance(info, dict)
     env.close()

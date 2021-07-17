@@ -9,8 +9,8 @@ stable-baselines3 = "*"
 sacred = "*"
 numpy = "*"
 gym = "*"
-gym-minigrid = "*"
 tqdm = "*"
+mazelab = {editable = true, git = "https://github.com/ejnnr/mazelab"}
 
 [dev-packages]
 pytest = "*"
