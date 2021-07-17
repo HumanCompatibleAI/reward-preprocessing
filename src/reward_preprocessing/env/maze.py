@@ -1,3 +1,6 @@
+import random
+from typing import Union
+
 from gym.spaces import Box, Discrete
 from mazelab import BaseEnv, BaseMaze
 from mazelab import DeepMindColor as color
@@ -32,7 +35,7 @@ class Maze(BaseMaze):
 
 
 class MazeEnv(BaseEnv):
-    def __init__(self, size: int = 5):
+    def __init__(self, size: int = 5, random_start: bool = True):
         super().__init__()
         x = np.zeros((size + 2, size + 2))
         x[0] = 1
@@ -41,6 +44,7 @@ class MazeEnv(BaseEnv):
         x[:, -1] = 1
         self.start_idx = [[1, 1]]
         self.goal_idx = [[4, 4]]
+        self.random_start = random_start
 
         self.maze = Maze(x)
         self.motions = VonNeumannMotion()
@@ -73,7 +77,12 @@ class MazeEnv(BaseEnv):
         return self.maze.to_value(), reward, done, {}
 
     def reset(self):
-        self.maze.objects.agent.positions = self.start_idx
+        if self.random_start:
+            self.maze.objects.agent.positions = [
+                list(random.choice(self.maze.objects.free.positions))
+            ]
+        else:
+            self.maze.objects.agent.positions = [self.start_idx]
         self.maze.objects.goal.positions = self.goal_idx
         return self.maze.to_value()
 
