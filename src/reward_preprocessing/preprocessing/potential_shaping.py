@@ -13,6 +13,7 @@ import numpy as np
 import torch
 from torch import nn
 
+from reward_preprocessing.env.maze import get_agent_position
 from reward_preprocessing.models import RewardModel
 from reward_preprocessing.transition import Transition
 
@@ -50,4 +51,23 @@ class LinearPotentialShaping(PotentialShaping):
     def __init__(self, model: RewardModel, gamma: float):
         in_size = np.product(model.state_shape)
         potential = nn.Sequential(nn.Flatten(), nn.Linear(in_size, 1))
+        super().__init__(model, potential, gamma)
+
+
+class RandomPotentialShaping(PotentialShaping):
+    """A processor that adds a random potential shaping."""
+
+    def __init__(self, model: RewardModel, gamma: float):
+        in_size = np.product(model.state_shape)
+        potential_data = torch.randn(in_size)
+
+        def potential(state):
+            # The total number of possible states for mazelab is
+            # 4 ** (n ** 2), where n is the size of the maze.
+            # So we let the potential only depend on the agent position,
+            # since this is the only non-fixed part of the state for
+            # any single episode.
+            position = get_agent_position(state)
+            return potential_data[position]
+
         super().__init__(model, potential, gamma)
