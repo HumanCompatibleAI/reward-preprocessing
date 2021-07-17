@@ -3,6 +3,9 @@ import numpy as np
 import pytest
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import DummyVecEnv
+import torch
+
+from reward_preprocessing.models import MlpRewardModel
 
 
 class MockEnv(gym.Env):
@@ -90,17 +93,34 @@ def venv():
 
 
 @pytest.fixture
-def model(env):
+def agent(env):
     """Return an (untrained) dummy agent model."""
 
     return PPO("MlpPolicy", env)
 
 
 @pytest.fixture
-def model_path(model, tmp_path):
+def agent_path(agent, tmp_path):
     """Return a path to a stored (untrained) agent model."""
     path = tmp_path / "agent"
-    model.save(path)
+    agent.save(path)
+    # we don't clean up here -- the tmp_path fixture takes care
+    # of deleting the directory
+    return path
+
+
+@pytest.fixture
+def model(env):
+    """Return an (untrained) dummy reward model."""
+
+    return MlpRewardModel(env.observation_space.shape)
+
+
+@pytest.fixture
+def model_path(model, tmp_path):
+    """Return a path to a stored (untrained) reward model."""
+    path = tmp_path / "model.pt"
+    torch.save(model.state_dict(), path)
     # we don't clean up here -- the tmp_path fixture takes care
     # of deleting the directory
     return path

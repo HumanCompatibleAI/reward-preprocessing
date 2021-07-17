@@ -39,13 +39,13 @@ def test_apply():
     assert new.next_state == "B"
 
 
-def test_num_transitions_single_env(env, model):
-    assert has_len(get_transitions(env, model, num=200), 200)
-    assert has_len(get_transitions(env, model, num=0), 0)
-    assert has_len(get_transitions(env, model, num=1), 1)
+def test_num_transitions_single_env(env, agent):
+    assert has_len(get_transitions(env, agent, num=200), 200)
+    assert has_len(get_transitions(env, agent, num=0), 0)
+    assert has_len(get_transitions(env, agent, num=1), 1)
     # By default (with num=None), the iterator should never terminate.
     # We check that at least it generates 200 transitions.
-    assert has_len(itertools.islice(get_transitions(env, model), 200), 200)
+    assert has_len(itertools.islice(get_transitions(env, agent), 200), 200)
 
 
 def test_policy_can_be_none(env):
@@ -53,8 +53,8 @@ def test_policy_can_be_none(env):
     assert has_len(get_transitions(env, num=10), 10)
 
 
-def test_multiple_envs(venv, model):
-    assert has_len(get_transitions(venv, model, num=17), 17)
+def test_multiple_envs(venv, agent):
+    assert has_len(get_transitions(venv, agent, num=17), 17)
 
 
 def test_generated_transitions(mock_env):
