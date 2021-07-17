@@ -111,6 +111,7 @@ def collate_fn(
             torch.stack([t.state for t, r in data]),
             torch.stack([t.action for t, r in data]),
             torch.stack([t.next_state for t, r in data]),
+            torch.stack([t.done for t, r in data]),
         ),
         torch.stack([r for t, r in data]),
     )
