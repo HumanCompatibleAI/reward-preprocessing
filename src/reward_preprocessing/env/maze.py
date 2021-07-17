@@ -135,7 +135,7 @@ def get_agent_positions(obs: torch.Tensor) -> torch.Tensor:
     could be extremely weird!
     """
     assert (
-        len(obs.shape) == 3
+        obs.ndim == 3
     ), "observation must have shape (batch_size, x_size, y_size)"
     batch_size, x_size, y_size = obs.shape
 
