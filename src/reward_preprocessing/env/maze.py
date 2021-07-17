@@ -37,10 +37,6 @@ class MazeEnv(BaseEnv):
     def __init__(self, size: int = 5, random_start: bool = True):
         super().__init__()
         x = np.zeros((size + 2, size + 2))
-        x[0] = 1
-        x[-1] = 1
-        x[:, 0] = 1
-        x[:, -1] = 1
         self.start_idx = [[1, 1]]
         self.goal_idx = [[4, 4]]
         self.random_start = random_start
@@ -86,12 +82,16 @@ class MazeEnv(BaseEnv):
         return self.maze.to_value()
 
     def _is_valid(self, position):
-        nonnegative = position[0] >= 0 and position[1] >= 0
-        within_edge = (
-            position[0] < self.maze.size[0] and position[1] < self.maze.size[1]
-        )
-        passable = not self.maze.to_impassable()[position[0]][position[1]]
-        return nonnegative and within_edge and passable
+        # position indices must be non-negative
+        if position[0] < 0 or position[1] < 0:
+            return False
+        # position indices must not be out of bounds
+        if position[0] >= self.maze.size[0] or position[1] >= self.maze.size[1]:
+            return False
+        # position must be passable
+        if self.maze.to_impassable()[position[0]][position[1]]:
+            return False
+        return True
 
     def _is_goal(self, position):
         out = False
