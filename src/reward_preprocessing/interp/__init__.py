@@ -9,3 +9,7 @@ functions is that each method may have parameters (and we want Sacred's mechanis
 to deal with those) and that they may produce artifacts (which should happen
 directly here, rather than in the main script.
 """
+
+from .visualize_rollout import rollout_ingredient, visualize_rollout
+
+__all__ = ["rollout_ingredient", "visualize_rollout"]
