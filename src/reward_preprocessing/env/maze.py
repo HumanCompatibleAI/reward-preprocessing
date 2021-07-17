@@ -137,15 +137,14 @@ def get_agent_positions(obs: torch.Tensor) -> torch.Tensor:
     assert (
         len(obs.shape) == 3
     ), "observation must have shape (batch_size, x_size, y_size)"
-    batch_size = obs.shape[0]
-    x_size, y_size = obs.shape[1:]
+    batch_size, x_size, y_size = obs.shape
 
     # {agent/goal}_positions have shape (num_{agents/goals}, 3)
     # where the second axis contains indices into the three axes
     # of obs.
     goal_positions = (obs == 3).nonzero()
     agent_positions = (obs == 2).nonzero()
-    # It would be nice to validate here that there is at most one agent
+    # TODO: It would be nice to validate here that there is at most one agent
     # in each observation and that if there is no agent, there is exactly
     # one goal. But doing that in vectorized form seems tricky.
 

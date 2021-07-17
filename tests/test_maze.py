@@ -23,7 +23,6 @@ def test_get_agent_positions():
         torch.div(goal_positions, n, rounding_mode="floor"),
         goal_positions % n,
     ] = 3
-    print(obs)
 
     assert torch.all(get_agent_positions(obs) == agent_positions), get_agent_positions(
         obs
@@ -50,7 +49,6 @@ def test_is_terminal():
         torch.div(goal_positions, n, rounding_mode="floor"),
         goal_positions % n,
     ] = 3
-    print(obs)
 
     # second and fourth state are terminal because agent is on
     # the goal
