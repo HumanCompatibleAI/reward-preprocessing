@@ -97,9 +97,36 @@ class MazeEnv(BaseEnv):
         return self.maze.to_rgb()
 
 
-def get_agent_position(obs: torch.Tensor) -> int:
-    x_size, y_size = obs.shape
+def get_agent_positions(obs: torch.Tensor) -> Union[torch.Tensor, int]:
+    """Get the position(s) of an agent in an observation or a batch of observations."""
+    x_size, y_size = obs.shape[-2:]
+    batch_shape = obs.shape[:-2]
+
+    goal_positions = (obs == 3).nonzero()
     agent_positions = (obs == 2).nonzero()
-    assert len(agent_positions) == 1
-    x, y = agent_positions[0]
-    return (x + y * x_size).item()
+
+    x = torch.empty(batch_shape, dtype=torch.long)
+    y = torch.empty(batch_shape, dtype=torch.long)
+
+    # If the agent reaches the goal, it vanishes.
+    # So we first fill out the position using the goal
+    # positions. Then, we overwrite the positions for
+    # those cases where the agent is visible
+    if len(batch_shape) == 1:
+        x[goal_positions[:, 0]] = goal_positions[:, -2]
+        y[goal_positions[:, 0]] = goal_positions[:, -1]
+
+        x[agent_positions[:, 0]] = agent_positions[:, -2]
+        y[agent_positions[:, 0]] = agent_positions[:, -1]
+    elif len(batch_shape) == 2:
+        x[goal_positions[:, 0], goal_positions[:, 1]] = goal_positions[:, -2]
+        y[goal_positions[:, 0], goal_positions[:, 1]] = goal_positions[:, -1]
+
+        x[agent_positions[:, 0], agent_positions[:, 1]] = agent_positions[:, -2]
+        y[agent_positions[:, 0], agent_positions[:, 1]] = agent_positions[:, -1]
+    else:
+        raise NotImplementedError(
+            "only batch shapes of length 1 or 2 are currently implemented"
+        )
+
+    return x + y * x_size
