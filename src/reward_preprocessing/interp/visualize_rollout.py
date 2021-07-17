@@ -4,11 +4,12 @@ from typing import Tuple
 
 import gym
 import matplotlib.pyplot as plt
+import numpy as np
 from sacred import Ingredient
 import torch
 
 from reward_preprocessing.models import RewardModel
-from reward_preprocessing.transition import Transition
+from reward_preprocessing.transition import get_transitions
 
 rollout_ingredient = Ingredient("rollout_visualization")
 
@@ -32,39 +33,28 @@ def visualize_rollout(
 ):
     """Visualizes a reward model by rendering a rollout together with the
     rewards predicted by the model."""
-    state = env.reset()
     n_rows, n_cols = plot_shape
     plt.figure(figsize=(4 * n_rows, 4 * n_cols))
-    i = 0
-    while i < n_rows * n_cols:
-        plt.subplot(n_rows, n_cols, i + 1)
-        plt.imshow(env.render(mode="rgb_array"))
+    for i, (transition, actual_reward) in enumerate(
+        get_transitions(env, agent, num=n_rows * n_cols)
+    ):
+        done = transition.done
 
-        if agent:
-            action, _ = agent.predict(state, deterministic=True)
-        else:
-            action = env.action_space.sample()
-
-        obs, actual_reward, done, info = env.step(action)
-
-        if done[0]:
-            next_state = info[0]["terminal_observation"][None]
-        else:
-            next_state = obs
-
-        transition = Transition(state, action, next_state, done)
+        # we add a batch singleton dimension to the front
+        # use np.array because that works both if the field is already
+        # an array (such as the state) and if it's a scalar (such as done)
+        transition = transition.apply(lambda x: np.array([x]))
         transition = transition.apply(torch.from_numpy)
         transition = transition.apply(lambda x: x.float())
         predicted_reward = model(transition).item()
 
-        state = obs
-
+        plt.subplot(n_rows, n_cols, i + 1)
+        plt.imshow(env.render(mode="rgb_array"))
         plt.axis("off")
-        title = f"{predicted_reward:.2f} ({actual_reward[0]:.2f})"
-        if done[0]:
+        title = f"{predicted_reward:.2f} ({actual_reward:.2f})"
+        if done:
             title += ", done"
         plt.title(title)
-        i += 1
 
     with tempfile.TemporaryDirectory() as dirname:
         path = Path(dirname)
