@@ -17,7 +17,7 @@ def config():
     model_path = None
     gamma = 0.99
 
-    # Just to be save, we check whether an observer already exists,
+    # Just to be safe, we check whether an observer already exists,
     # to avoid adding multiple copies of the same observer
     # (see https://github.com/IDSIA/sacred/issues/300)
     if len(ex.observers) == 0:
