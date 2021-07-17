@@ -162,10 +162,3 @@ def get_agent_positions(obs: torch.Tensor) -> torch.Tensor:
 
     # finally, we encode each (x, y) position as a single integer
     return y + x * y_size
-
-
-def is_terminal(states):
-    batch_size = states.size(0)
-    # a Mazelab state is terminal if no agent (encoded as 2)
-    # is visible (because it is hidden by the goal)
-    return (states != 2).view(batch_size, -1).all(dim=1)

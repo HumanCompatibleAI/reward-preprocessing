@@ -34,17 +34,20 @@ def main(model_path: str, save_path: str, train_samples: int, test_samples: int)
     actions = {}
     next_states = {}
     rewards = {}
+    dones = {}
 
     for mode, num_samples in zip(["train", "test"], [train_samples, test_samples]):
         states[mode] = []
         actions[mode] = []
         next_states[mode] = []
         rewards[mode] = []
+        dones[mode] = []
         for transition, reward in get_transitions(env, model, num=num_samples):
             states[mode].append(transition.state)
             actions[mode].append(transition.action)
             next_states[mode].append(transition.next_state)
             rewards[mode].append(reward)
+            dones[mode].append(transition.done)
 
     env.close()
 

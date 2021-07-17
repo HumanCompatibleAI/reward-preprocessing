@@ -32,7 +32,7 @@ def has_len(iterator: Iterator, target_length: int):
 
 
 def test_apply():
-    transition = Transition("a", None, "b")
+    transition = Transition("a", None, "b", None)
     new = transition.apply(lambda x: x.upper())
     assert new.state == "A"
     assert new.action is None

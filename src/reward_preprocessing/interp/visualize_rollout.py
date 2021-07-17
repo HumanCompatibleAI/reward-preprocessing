@@ -52,7 +52,7 @@ def visualize_rollout(
         else:
             next_state = obs
 
-        transition = Transition(state, action, next_state)
+        transition = Transition(state, action, next_state, done)
         transition = transition.apply(torch.from_numpy)
         transition = transition.apply(lambda x: x.float())
         predicted_reward = model(transition).item()

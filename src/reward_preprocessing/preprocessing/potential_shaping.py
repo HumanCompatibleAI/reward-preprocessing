@@ -13,7 +13,6 @@ import numpy as np
 import torch
 from torch import nn
 
-import reward_preprocessing.env.maze as maze
 from reward_preprocessing.env.maze import get_agent_positions
 from reward_preprocessing.models import RewardModel
 from reward_preprocessing.transition import Transition
@@ -31,11 +30,6 @@ class PotentialShaping(Preprocessor):
             If the potential is itself a torch.nn.Module, it will become
             a submodule of this Module.
         gamma: the discount factor
-        is_terminal (optional): a Callable that determines whether a given
-            batch of states is terminal (statewise).
-            The potential of terminal states is forced to be zero
-            automatically. By default, no state is terminal, so this feature
-            isn't used.
     """
 
     def __init__(
@@ -43,23 +37,19 @@ class PotentialShaping(Preprocessor):
         model: RewardModel,
         potential: Callable,
         gamma: float,
-        is_terminal: Callable = lambda x: torch.zeros(x.size(0), dtype=torch.bool),
     ):
         super().__init__(model)
-        self._potential = potential
+        self.potential = potential
         self.gamma = gamma
-        self.is_terminal = is_terminal
-
-    def potential(self, states) -> torch.Tensor:
-        return (~self.is_terminal(states)) * self._potential(states)
 
     def forward(self, transitions: Transition) -> torch.Tensor:
         rewards = self.model(transitions)
-        return (
-            rewards
-            + self.gamma * self.potential(transitions.next_state)
-            - self.potential(transitions.state)
+        current_potential = self.potential(transitions.state)
+        # if the next state is final, then we set it's potential to zero
+        next_potential = torch.logical_not(transitions.done) * self.potential(
+            transitions.next_state
         )
+        return rewards + self.gamma * next_potential - current_potential
 
 
 class LinearPotentialShaping(PotentialShaping):
@@ -87,7 +77,7 @@ class RandomPotentialShaping(PotentialShaping):
             positions = get_agent_positions(states)
             return self.potential_data[positions]
 
-        super().__init__(model, potential, gamma, maze.is_terminal)
+        super().__init__(model, potential, gamma)
 
 
 class LookupTable(nn.Module):
@@ -107,4 +97,4 @@ class TabularPotentialShaping(PotentialShaping):
         in_size = np.product(model.state_shape)
         potential = LookupTable(in_size)
 
-        super().__init__(model, potential, gamma, maze.is_terminal)
+        super().__init__(model, potential, gamma)

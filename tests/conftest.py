@@ -119,17 +119,20 @@ def data_path(env, tmp_path):
     actions = {}
     next_states = {}
     rewards = {}
+    dones = {}
 
     for mode, num_samples in zip(["train", "test"], [train_samples, test_samples]):
         states[mode] = []
         actions[mode] = []
         next_states[mode] = []
         rewards[mode] = []
+        dones[mode] = []
         for transition, reward in get_transitions(env, num=num_samples):
             states[mode].append(transition.state)
             actions[mode].append(transition.action)
             next_states[mode].append(transition.next_state)
             rewards[mode].append(reward)
+            dones[mode].append(transition.done)
 
     np.savez(
         str(path),
@@ -137,10 +140,12 @@ def data_path(env, tmp_path):
         train_actions=np.array(actions["train"]),
         train_next_states=np.stack(next_states["train"], axis=0),
         train_rewards=np.array(rewards["train"]),
+        train_dones=np.array(dones["train"]),
         test_states=np.stack(states["test"], axis=0),
         test_actions=np.array(actions["test"]),
         test_next_states=np.stack(next_states["test"], axis=0),
         test_rewards=np.array(rewards["test"]),
+        test_dones=np.array(dones["test"]),
     )
 
     # we don't clean up here -- the tmp_path fixture takes care
