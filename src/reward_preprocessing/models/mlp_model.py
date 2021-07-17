@@ -31,10 +31,10 @@ class MlpRewardModel(RewardModel):
             nn.Linear(hidden_size, 1),
         )
 
-    def forward(self, transition: Transition) -> torch.Tensor:
+    def forward(self, transitions: Transition) -> torch.Tensor:
         # the new stacked axis should be the second one, since the first axis
         # should remain the batch axis
-        x = torch.stack([transition.state, transition.next_state], dim=1)
+        x = torch.stack([transitions.state, transitions.next_state], dim=1)
         x = x.flatten(start_dim=1)
         # the squeeze gets rid of the final singleton dimension produced by the last
         # linear layer

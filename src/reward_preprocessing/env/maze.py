@@ -1,5 +1,4 @@
 import random
-from typing import Union
 
 from gym.spaces import Box, Discrete
 from mazelab import BaseEnv, BaseMaze
@@ -106,36 +105,52 @@ class MazeEnv(BaseEnv):
         return self.maze.to_rgb()
 
 
-def get_agent_positions(obs: torch.Tensor) -> Union[torch.Tensor, int]:
-    """Get the position(s) of an agent in an observation or a batch of observations."""
-    x_size, y_size = obs.shape[-2:]
-    batch_shape = obs.shape[:-2]
+def get_agent_positions(obs: torch.Tensor) -> torch.Tensor:
+    """Get the positions of an agent in a batch of observations.
 
+    If no agent is found, then the goal position is returned instead
+    (that's because in the Mazelab environment, the goal hides the
+    agent in the terminal state).
+
+    Currently, no checks regarding the number of goals and agents happen
+    in this function, make sure not to pass invalid input or the results
+    could be extremely weird!
+    """
+    assert (
+        len(obs.shape) == 3
+    ), "observation must have shape (batch_size, x_size, y_size)"
+    batch_size = obs.shape[0]
+    x_size, y_size = obs.shape[1:]
+
+    # {agent/goal}_positions have shape (num_{agents/goals}, 3)
+    # where the second axis contains indices into the three axes
+    # of obs.
     goal_positions = (obs == 3).nonzero()
     agent_positions = (obs == 2).nonzero()
+    # It would be nice to validate here that there is at most one agent
+    # in each observation and that if there is no agent, there is exactly
+    # one goal. But doing that in vectorized form seems tricky.
 
-    x = torch.empty(batch_shape, dtype=torch.long)
-    y = torch.empty(batch_shape, dtype=torch.long)
+    # these will contain the x and y agent positions for all the observations
+    x = torch.empty(batch_size, dtype=torch.long)
+    y = torch.empty(batch_size, dtype=torch.long)
 
-    # If the agent reaches the goal, it vanishes.
+    # If the agent reaches the goal, the agent vanishes.
     # So we first fill out the position using the goal
     # positions. Then, we overwrite the positions for
     # those cases where the agent is visible
-    if len(batch_shape) == 1:
-        x[goal_positions[:, 0]] = goal_positions[:, -2]
-        y[goal_positions[:, 0]] = goal_positions[:, -1]
+    x[goal_positions[:, 0]] = goal_positions[:, 1]
+    y[goal_positions[:, 0]] = goal_positions[:, 2]
 
-        x[agent_positions[:, 0]] = agent_positions[:, -2]
-        y[agent_positions[:, 0]] = agent_positions[:, -1]
-    elif len(batch_shape) == 2:
-        x[goal_positions[:, 0], goal_positions[:, 1]] = goal_positions[:, -2]
-        y[goal_positions[:, 0], goal_positions[:, 1]] = goal_positions[:, -1]
+    x[agent_positions[:, 0]] = agent_positions[:, 1]
+    y[agent_positions[:, 0]] = agent_positions[:, 2]
 
-        x[agent_positions[:, 0], agent_positions[:, 1]] = agent_positions[:, -2]
-        y[agent_positions[:, 0], agent_positions[:, 1]] = agent_positions[:, -1]
-    else:
-        raise NotImplementedError(
-            "only batch shapes of length 1 or 2 are currently implemented"
-        )
+    # finally, we encode each (x, y) position as a single integer
+    return y + x * y_size
 
-    return x + y * x_size
+
+def is_terminal(states):
+    batch_size = states.size(0)
+    # a Mazelab state is terminal if no agent (encoded as 2)
+    # is visible (because it is hidden by the goal)
+    return (states != 2).view(batch_size, -1).all(dim=1)

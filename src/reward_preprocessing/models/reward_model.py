@@ -20,5 +20,11 @@ class RewardModel(nn.Module, ABC):
         self.state_shape = state_shape
 
     @abstractmethod
-    def forward(self, transition: Transition) -> torch.Tensor:
+    def forward(self, transitions: Transition) -> torch.Tensor:
+        """Predict the reward for a batch of transitions.
+
+        The batch of transitions is represented as a single Transition instance
+        which contains batches in each field.
+        Returns a batch of associated rewards.
+        """
         pass
