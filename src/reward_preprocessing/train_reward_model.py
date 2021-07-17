@@ -111,7 +111,7 @@ def main(
         if save_path:
             model_path = Path(save_path)
         else:
-            model_path = tmp_path / "trained_agent"
+            model_path = tmp_path / "trained_model"
 
         model_path = model_path.with_suffix(".pt")
         torch.save(model.state_dict(), model_path)
