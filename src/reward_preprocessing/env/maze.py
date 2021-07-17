@@ -134,9 +134,7 @@ def get_agent_positions(obs: torch.Tensor) -> torch.Tensor:
     in this function, make sure not to pass invalid input or the results
     could be extremely weird!
     """
-    assert (
-        obs.ndim == 3
-    ), "observation must have shape (batch_size, x_size, y_size)"
+    assert obs.ndim == 3, "observation must have shape (batch_size, x_size, y_size)"
     batch_size, x_size, y_size = obs.shape
 
     # {agent/goal}_positions have shape (num_{agents/goals}, 3)
