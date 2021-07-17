@@ -4,6 +4,8 @@ import pytest
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import DummyVecEnv
 
+from reward_preprocessing.transition import get_transitions
+
 
 class MockEnv(gym.Env):
     """Extremely simple deterministic environment for testing purposes.
@@ -109,7 +111,6 @@ def model_path(model, tmp_path):
 @pytest.fixture
 def data_path(env, tmp_path):
     """Return a path to a small dummy reward dataset."""
-    from reward_preprocessing.transition import get_transitions
 
     path = tmp_path / "dataset.npz"
     train_samples = 5
