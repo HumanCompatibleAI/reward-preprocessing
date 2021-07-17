@@ -13,7 +13,7 @@ import numpy as np
 import torch
 from torch import nn
 
-from reward_preprocessing.env.maze import get_agent_position
+from reward_preprocessing.env.maze import get_agent_positions
 from reward_preprocessing.models import RewardModel
 from reward_preprocessing.transition import Transition
 
@@ -55,7 +55,7 @@ class LinearPotentialShaping(PotentialShaping):
 
 
 class RandomPotentialShaping(PotentialShaping):
-    """A processor that adds a random potential shaping."""
+    """A preprocessor that adds a random potential shaping."""
 
     def __init__(self, model: RewardModel, gamma: float):
         in_size = np.product(model.state_shape)
@@ -67,7 +67,27 @@ class RandomPotentialShaping(PotentialShaping):
             # So we let the potential only depend on the agent position,
             # since this is the only non-fixed part of the state for
             # any single episode.
-            position = get_agent_position(state)
+            position = get_agent_positions(state)
             return potential_data[position]
+
+        super().__init__(model, potential, gamma)
+
+
+class LookupTable(nn.Module):
+    def __init__(self, size):
+        super().__init__()
+        self.potential = nn.Parameter(torch.zeros(size))
+
+    def forward(self, state):
+        position = get_agent_positions(state)
+        return self.potential[position]
+
+
+class TabularPotentialShaping(PotentialShaping):
+    """A preprocessor that adds a learned potential shaping in a tabular setting."""
+
+    def __init__(self, model: RewardModel, gamma: float):
+        in_size = np.product(model.state_shape)
+        potential = LookupTable(in_size)
 
         super().__init__(model, potential, gamma)
