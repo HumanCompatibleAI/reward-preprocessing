@@ -17,13 +17,17 @@ def config():
     model_path = None
     gamma = 0.99
 
+    _ = locals()  # make flake8 happy
+    del _
+
+
+@ex.config_hook
+def add_observers(config, command_name, logger):
     # Just to be safe, we check whether an observer already exists,
     # to avoid adding multiple copies of the same observer
     # (see https://github.com/IDSIA/sacred/issues/300)
     if len(ex.observers) == 0:
-        ex.observers.append(FileStorageObserver(run_dir))
-    _ = locals()  # make flake8 happy
-    del _
+        ex.observers.append(FileStorageObserver(config["run_dir"]))
 
 
 @ex.automain
