@@ -36,6 +36,8 @@ class Maze(BaseMaze):
 
 class MazeEnv(BaseEnv):
     def __init__(self, size: int = 5, random_start: bool = True):
+        # among other things, this calls self.seed() so that the self.rng
+        # object exists
         super().__init__()
         x = np.zeros((size + 2, size + 2))
         self.start_idx = [[1, 1]]
