@@ -2,7 +2,6 @@ from pathlib import Path
 import tempfile
 
 from sacred import Experiment
-from sacred.observers import FileStorageObserver
 import torch
 from tqdm import tqdm
 
@@ -13,8 +12,10 @@ from reward_preprocessing.datasets import (
     to_torch,
 )
 from reward_preprocessing.models import MlpRewardModel
+from reward_preprocessing.utils import add_observers
 
 ex = Experiment("train_reward_model")
+add_observers(ex)
 
 
 @ex.config
@@ -33,15 +34,6 @@ def config():
 
     _ = locals()  # make flake8 happy
     del _
-
-
-@ex.config_hook
-def add_observers(config, command_name, logger):
-    # Just to be safe, we check whether an observer already exists,
-    # to avoid adding multiple copies of the same observer
-    # (see https://github.com/IDSIA/sacred/issues/300)
-    if len(ex.observers) == 0:
-        ex.observers.append(FileStorageObserver(config["run_dir"]))
 
 
 @ex.automain
