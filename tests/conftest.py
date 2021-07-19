@@ -6,7 +6,6 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 import torch
 
 from reward_preprocessing.models import MlpRewardModel
-
 from reward_preprocessing.transition import get_transitions
 
 
