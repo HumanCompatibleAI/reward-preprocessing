@@ -3,6 +3,9 @@ import numpy as np
 import pytest
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import DummyVecEnv
+import torch
+
+from reward_preprocessing.models import MlpRewardModel
 
 from reward_preprocessing.transition import get_transitions
 
@@ -92,17 +95,34 @@ def venv():
 
 
 @pytest.fixture
-def model(env):
+def agent(env):
     """Return an (untrained) dummy agent model."""
 
     return PPO("MlpPolicy", env)
 
 
 @pytest.fixture
-def model_path(model, tmp_path):
+def agent_path(agent, tmp_path):
     """Return a path to a stored (untrained) agent model."""
     path = tmp_path / "agent"
-    model.save(path)
+    agent.save(path)
+    # we don't clean up here -- the tmp_path fixture takes care
+    # of deleting the directory
+    return path
+
+
+@pytest.fixture
+def model(env):
+    """Return an (untrained) dummy reward model."""
+
+    return MlpRewardModel(env.observation_space.shape)
+
+
+@pytest.fixture
+def model_path(model, tmp_path):
+    """Return a path to a stored (untrained) reward model."""
+    path = tmp_path / "model.pt"
+    torch.save(model.state_dict(), path)
     # we don't clean up here -- the tmp_path fixture takes care
     # of deleting the directory
     return path
@@ -120,17 +140,20 @@ def data_path(env, tmp_path):
     actions = {}
     next_states = {}
     rewards = {}
+    dones = {}
 
     for mode, num_samples in zip(["train", "test"], [train_samples, test_samples]):
         states[mode] = []
         actions[mode] = []
         next_states[mode] = []
         rewards[mode] = []
+        dones[mode] = []
         for transition, reward in get_transitions(env, num=num_samples):
             states[mode].append(transition.state)
             actions[mode].append(transition.action)
             next_states[mode].append(transition.next_state)
             rewards[mode].append(reward)
+            dones[mode].append(transition.done)
 
     np.savez(
         str(path),
@@ -138,10 +161,12 @@ def data_path(env, tmp_path):
         train_actions=np.array(actions["train"]),
         train_next_states=np.stack(next_states["train"], axis=0),
         train_rewards=np.array(rewards["train"]),
+        train_dones=np.array(dones["train"]),
         test_states=np.stack(states["test"], axis=0),
         test_actions=np.array(actions["test"]),
         test_next_states=np.stack(next_states["test"], axis=0),
         test_rewards=np.array(rewards["test"]),
+        test_dones=np.array(dones["test"]),
     )
 
     # we don't clean up here -- the tmp_path fixture takes care

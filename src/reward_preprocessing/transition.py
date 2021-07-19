@@ -7,12 +7,13 @@ get_transitions is a helper function to generate a set
 of transition-reward pairs from an environment and a policy.
 """
 from dataclasses import dataclass
-from typing import Any, Callable, Iterator, Tuple
+from typing import Any, Callable, Iterator, Tuple, Union
 
 import numpy as np
 from stable_baselines3.common.base_class import BaseAlgorithm
 from stable_baselines3.common.policies import BasePolicy
 from stable_baselines3.common.vec_env import VecEnv
+import torch
 
 
 @dataclass
@@ -26,15 +27,18 @@ class Transition:
     be added in the future.
     """
 
-    state: Any = None
-    action: Any = None
-    next_state: Any = None
+    state: Any
+    action: Any
+    next_state: Any
+    # can be a tensor of booleans if we have a batch of transitions
+    done: Union[None, bool, torch.Tensor]
 
     def apply(self, fn):
         state = None if self.state is None else fn(self.state)
         action = None if self.action is None else fn(self.action)
         next_state = None if self.next_state is None else fn(self.next_state)
-        return Transition(state, action, next_state)
+        done = None if self.done is None else fn(self.done)
+        return Transition(state, action, next_state, done)
 
     def to(self, device):
         return self.apply(lambda x: x.to(device))
@@ -116,7 +120,7 @@ def get_transitions(
                 else:
                     real_ob = next_state
 
-                yield Transition(state, act, real_ob), rew
+                yield Transition(state, act, real_ob, done), rew
                 num_sampled += 1
 
                 if num is not None and num_sampled >= num:

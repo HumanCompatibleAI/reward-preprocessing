@@ -24,8 +24,8 @@ class Preprocessor(RewardModel):
         self.model = model
         self.freeze_model()
 
-    def forward(self, transition: Transition) -> torch.Tensor:
-        return self.model(transition)
+    def forward(self, transitions: Transition) -> torch.Tensor:
+        return self.model(transitions)
 
     def freeze_model(self):
         """Freeze the weights of the wrapped model and put it into eval mode.

@@ -18,9 +18,19 @@ def test_dummy_potential():
     state = torch.randn(1, 5, 5)
     action = None
     next_state = torch.randn(1, 5, 5)
-    transition = Transition(state, action, next_state)
+    done = torch.tensor([False])
+    transition = Transition(state, action, next_state, done)
 
     original = model(transition)
     shaped = shaping(transition)
 
     assert shaped == original + gamma * torch.sum(next_state) - torch.sum(state)
+
+    # now check that the terminal state has potential 0
+    done = torch.tensor([True])
+    transition = Transition(state, action, next_state, done)
+
+    original = model(transition)
+    shaped = shaping(transition)
+
+    assert shaped == original - torch.sum(state)

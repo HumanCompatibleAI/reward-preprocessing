@@ -46,8 +46,9 @@ class RewardData(torch.utils.data.Dataset):
         action = self.data[f"{self.mode}_actions"][k]
         next_state = self.data[f"{self.mode}_next_states"][k]
         reward = self.data[f"{self.mode}_rewards"][k]
+        done = self.data[f"{self.mode}_dones"][k]
 
-        out = Transition(state, action, next_state), reward
+        out = Transition(state, action, next_state, done), reward
 
         if self.transform:
             out = self.transform(out)
@@ -110,6 +111,7 @@ def collate_fn(
             torch.stack([t.state for t, r in data]),
             torch.stack([t.action for t, r in data]),
             torch.stack([t.next_state for t, r in data]),
+            torch.stack([t.done for t, r in data]),
         ),
         torch.stack([r for t, r in data]),
     )
