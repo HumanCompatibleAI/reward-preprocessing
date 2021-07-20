@@ -16,6 +16,7 @@ rollout_ingredient = Ingredient("rollout_visualization")
 
 @rollout_ingredient.config
 def config():
+    enabled = True
     plot_shape = (4, 4)
     save_path = None
     _ = locals()  # make flake8 happy
@@ -28,11 +29,14 @@ def visualize_rollout(
     env: gym.Env,
     plot_shape: Tuple[int, int],
     save_path: str,
+    enabled: bool,
     _run,
     agent=None,
-):
+) -> None:
     """Visualizes a reward model by rendering a rollout together with the
     rewards predicted by the model."""
+    if not enabled:
+        return
     n_rows, n_cols = plot_shape
     plt.figure(figsize=(4 * n_rows, 4 * n_cols))
     for i, (transition, actual_reward) in enumerate(
