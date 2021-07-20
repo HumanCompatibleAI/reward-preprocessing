@@ -64,9 +64,11 @@ class LinearPotentialShaping(PotentialShaping):
 class RandomPotentialShaping(PotentialShaping):
     """A preprocessor that adds a random potential shaping."""
 
-    def __init__(self, model: RewardModel, gamma: float):
+    def __init__(
+        self, model: RewardModel, gamma: float, mean: float = 0, std: float = 1
+    ):
         in_size = np.product(model.state_shape)
-        self.potential_data = torch.randn(in_size)
+        self.potential_data = std * torch.randn(in_size) + mean
 
         def potential(states):
             # The total number of possible states for mazelab is
