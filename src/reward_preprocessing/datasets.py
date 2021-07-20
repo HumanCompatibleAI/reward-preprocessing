@@ -166,6 +166,71 @@ def collate_fn(
     )
 
 
+def _get_stored_data_loaders(
+    batch_size: int,
+    num_workers: int,
+    data_path: str,
+    num_train: int = None,
+    num_test: int = None,
+    transform: Callable = None,
+) -> Tuple[torch.utils.data.DataLoader, torch.utils.data.DataLoader]:
+    path = Path(data_path)
+    train_data = StoredRewardData(path, transform=transform, train=True)
+    test_data = StoredRewardData(path, transform=transform, train=False)
+    if num_train is not None and num_train > len(train_data):
+        warnings.warn("Fewer training samples than asked for are available.")
+    if num_test is not None and num_test > len(test_data):
+        warnings.warn("Fewer test samples than asked for are available.")
+
+    train_loader = torch.utils.data.DataLoader(
+        train_data,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=num_workers,
+        # workaround for https://github.com/numpy/numpy/issues/18124
+        # see docstring of get_worker_init_fn for details
+        worker_init_fn=get_worker_init_fn(path),
+        collate_fn=collate_fn,
+    )
+    test_loader = torch.utils.data.DataLoader(
+        test_data,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=num_workers,
+        # workaround for https://github.com/numpy/numpy/issues/18124
+        # see docstring of get_worker_init_fn for details
+        worker_init_fn=get_worker_init_fn(path),
+        collate_fn=collate_fn,
+    )
+    return train_loader, test_loader
+
+
+def _get_dynamic_data_loaders(
+    batch_size: int,
+    venv: VecEnv,
+    policy=None,
+    num_train: int = None,
+    num_test: int = None,
+    transform: Callable = None,
+) -> Tuple[torch.utils.data.DataLoader, torch.utils.data.DataLoader]:
+    if num_train is None or num_test is None:
+        warnings.warn("No number of samples given, will return an infinite DataLoader.")
+    train_data = DynamicRewardData(venv, policy, num=num_train, transform=transform)
+    test_data = DynamicRewardData(venv, policy, num=num_test, transform=transform)
+
+    train_loader = torch.utils.data.DataLoader(
+        train_data,
+        batch_size=batch_size,
+        collate_fn=collate_fn,
+    )
+    test_loader = torch.utils.data.DataLoader(
+        test_data,
+        batch_size=batch_size,
+        collate_fn=collate_fn,
+    )
+    return train_loader, test_loader
+
+
 def get_data_loaders(
     batch_size: int,
     num_workers: int = 0,
@@ -176,66 +241,50 @@ def get_data_loaders(
     num_test: int = None,
     transform: Callable = None,
 ) -> Tuple[torch.utils.data.DataLoader, torch.utils.data.DataLoader]:
+    """Create train and test Pytorch dataloaders for transitions.
+
+    The underlying Dataset will be either StoredRewardData or DynamicRewardData,
+    depending on the arguments passed to this function.
+
+    If you want to use a stored dataset, pass a `data_path`. Otherwise,
+    pass a `venv` and optionally a `policy` and `num_train`, `num_test`
+    (to get a finite dataloader).
+
+    Args:
+        batch_size (int): batch size for the dataloaders
+        num_workers (int, optional): number of dataloader workers. Defaults to 0.
+        data_path (str, optional): path to a stored dataset for StoredRewardData.
+        venv (VecEnv, optional): environment to use for rollouts, only required if
+            `data_path` is None.
+        policy (optional): policy, see `get_transitions` documentation for possible
+            values. If left to None, random actions are chosen.
+        num_train (int, optional): number of training samples.
+        num_test (int, optional): number of test samples.
+        transform (Callable, optional): transforms to pass on to the Dataset.
+
+    Returns:
+        Tuple[torch.utils.data.DataLoader, torch.utils.data.DataLoader]: a train and
+            a test dataloader which return batches of (Transition, reward) tuples
+    """
     if data_path is not None:
         # if a path to a dataset is given, we use that
         if policy is not None:
-            warnings.warn(
-                "A policy was set but will be ignored because a stored dataset is used."
+            raise ValueError(
+                "Both policy and path to a dataset were given, can only use one."
             )
 
-        path = Path(data_path)
-        train_data = StoredRewardData(path, transform=transform, train=True)
-        test_data = StoredRewardData(path, transform=transform, train=False)
-        if num_train is not None and num_train > len(train_data):
-            warnings.warn("Fewer training samples than asked for are available.")
-        if num_test is not None and num_test > len(test_data):
-            warnings.warn("Fewer test samples than asked for are available.")
-
-        train_loader = torch.utils.data.DataLoader(
-            train_data,
-            batch_size=batch_size,
-            shuffle=True,
-            num_workers=num_workers,
-            # workaround for https://github.com/numpy/numpy/issues/18124
-            # see docstring of get_worker_init_fn for details
-            worker_init_fn=get_worker_init_fn(path),
-            collate_fn=collate_fn,
-        )
-        test_loader = torch.utils.data.DataLoader(
-            test_data,
-            batch_size=batch_size,
-            shuffle=False,
-            num_workers=num_workers,
-            # workaround for https://github.com/numpy/numpy/issues/18124
-            # see docstring of get_worker_init_fn for details
-            worker_init_fn=get_worker_init_fn(path),
-            collate_fn=collate_fn,
-        )
-    else:
-        # if no path is given, we return a dataloader that generates samples
-        # dynamically
-        assert venv is not None, "Path to dataset or an environment are required."
-        assert (
-            num_workers == 0
-        ), "Multiple workers are currently not supported for dynamic datasets."
-        if num_train is None or num_test is None:
-            warnings.warn(
-                "No number of samples given, will return an infinite DataLoader."
-            )
-        train_data = DynamicRewardData(venv, policy, num=num_train, transform=transform)
-        test_data = DynamicRewardData(venv, policy, num=num_test, transform=transform)
-
-        train_loader = torch.utils.data.DataLoader(
-            train_data,
-            batch_size=batch_size,
-            num_workers=num_workers,
-            collate_fn=collate_fn,
-        )
-        test_loader = torch.utils.data.DataLoader(
-            test_data,
-            batch_size=batch_size,
-            num_workers=num_workers,
-            collate_fn=collate_fn,
+        return _get_stored_data_loaders(
+            batch_size, num_workers, data_path, num_train, num_test, transform
         )
 
-    return train_loader, test_loader
+    # if no path is given, we return a dataloader that generates samples
+    # dynamically
+    if venv is None:
+        raise ValueError("Path to dataset or an environment are required.")
+    if num_workers > 0:
+        raise ValueError(
+            "Multiple workers are currently not supported for dynamic datasets."
+        )
+    return _get_dynamic_data_loaders(
+        batch_size, venv, policy, num_train, num_test, transform
+    )
