@@ -34,6 +34,8 @@ def test_reward_training_experiment(data_path, tmp_path):
             "epochs": 1,
             "batch_size": 2,
             "data_path": str(data_path),
+            "steps": None,
+            "test_steps": None,
         }
     )
 
@@ -44,5 +46,7 @@ def test_interpret_experiment(model_path, agent_path, tmp_path):
             "run_dir": str(tmp_path),
             "model_path": str(model_path),
             "agent_path": str(agent_path),
+            "sparsify.steps": 10,
+            "sparsify.batch_size": 2,
         }
     )
