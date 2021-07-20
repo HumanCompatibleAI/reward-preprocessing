@@ -60,8 +60,10 @@ def main(model_path: str, save_path: str, train_samples: int, test_samples: int)
         train_actions=np.array(actions["train"]),
         train_next_states=np.stack(next_states["train"], axis=0),
         train_rewards=np.array(rewards["train"]),
+        train_dones=np.array(dones["train"]),
         test_states=np.stack(states["test"], axis=0),
         test_actions=np.array(actions["test"]),
         test_next_states=np.stack(next_states["test"], axis=0),
         test_rewards=np.array(rewards["test"]),
+        test_dones=np.array(dones["test"]),
     )
