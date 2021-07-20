@@ -16,7 +16,7 @@ ex = Experiment("create_rollouts", ingredients=[env_ingredient])
 @ex.config
 def config():
     # path where the agent is saved (without .zip extension)
-    model_path = ""
+    agent_path = ""
     # path where the dataset should be saved to (without .npz extension)
     save_path = ""
     train_samples = 10000
@@ -26,9 +26,9 @@ def config():
 
 
 @ex.automain
-def main(model_path: str, save_path: str, train_samples: int, test_samples: int):
+def main(agent_path: str, save_path: str, train_samples: int, test_samples: int):
     env = create_env()
-    model = PPO.load(model_path)
+    model = PPO.load(agent_path)
 
     states = {}
     actions = {}
