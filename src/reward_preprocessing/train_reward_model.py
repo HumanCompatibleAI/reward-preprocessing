@@ -29,7 +29,7 @@ def config():
     run_dir = "runs/reward_model"
     data_path = None
     agent_path = None
-    num_workers = 4
+    num_workers = 0
     steps = 10000
     test_steps = 5000
     batch_size = 32

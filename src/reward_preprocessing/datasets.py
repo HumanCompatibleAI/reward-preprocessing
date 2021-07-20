@@ -215,6 +215,9 @@ def get_data_loaders(
         # if no path is given, we return a dataloader that generates samples
         # dynamically
         assert venv is not None, "Path to dataset or an environment are required."
+        assert (
+            num_workers == 0
+        ), "Multiple workers are currently not supported for dynamic datasets."
         if num_train is None or num_test is None:
             warnings.warn(
                 "No number of samples given, will return an infinite DataLoader."
