@@ -19,4 +19,7 @@ def config():
 def create_env(name: str, _seed: int, options: Mapping[str, Any]):
     env = DummyVecEnv([lambda: gym.make(name, **options)])
     env.seed(_seed)
+    # the action space uses a distinct random seed from the environment
+    # itself, which is important if we use randomly sampled actions
+    env.action_space.np_random.seed(_seed)
     return env
