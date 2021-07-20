@@ -61,42 +61,30 @@ class LinearPotentialShaping(PotentialShaping):
         super().__init__(model, potential, gamma)
 
 
-class RandomPotentialShaping(PotentialShaping):
+class TabularPotentialShaping(PotentialShaping):
+    """A preprocessor that adds a learned potential shaping in a tabular setting."""
+
+    def __init__(self, model: RewardModel, gamma: float):
+        super().__init__(model, self._potential, gamma)
+        in_size = np.product(model.state_shape)
+        self._data = nn.Parameter(torch.zeros(in_size))
+
+    def _potential(self, states):
+        positions = get_agent_positions(states)
+        return self._data[positions]
+
+    @property
+    def potential_data(self) -> torch.Tensor:
+        return self._data
+
+
+class RandomPotentialShaping(TabularPotentialShaping):
     """A preprocessor that adds a random potential shaping."""
 
     def __init__(
         self, model: RewardModel, gamma: float, mean: float = 0, std: float = 1
     ):
-        in_size = np.product(model.state_shape)
-        self.potential_data = std * torch.randn(in_size) + mean
-
-        def potential(states):
-            # The total number of possible states for mazelab is
-            # 4 ** (n ** 2), where n is the size of the maze.
-            # So we let the potential only depend on the agent position,
-            # since this is the only non-fixed part of the state for
-            # any single episode.
-            positions = get_agent_positions(states)
-            return self.potential_data[positions]
-
-        super().__init__(model, potential, gamma)
-
-
-class LookupTable(nn.Module):
-    def __init__(self, size):
-        super().__init__()
-        self.potential = nn.Parameter(torch.zeros(size))
-
-    def forward(self, states):
-        positions = get_agent_positions(states)
-        return self.potential[positions]
-
-
-class TabularPotentialShaping(PotentialShaping):
-    """A preprocessor that adds a learned potential shaping in a tabular setting."""
-
-    def __init__(self, model: RewardModel, gamma: float):
-        in_size = np.product(model.state_shape)
-        potential = LookupTable(in_size)
-
-        super().__init__(model, potential, gamma)
+        super().__init__(model, gamma)
+        self._data = torch.nn.Parameter(
+            std * torch.randn_like(self._data) + mean, requires_grad=False
+        )

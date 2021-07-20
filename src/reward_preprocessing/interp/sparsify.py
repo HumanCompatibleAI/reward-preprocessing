@@ -95,7 +95,7 @@ def sparsify(
     fig, ax = plt.subplots()
 
     im = ax.imshow(
-        model.potential.potential.detach()
+        model.potential_data.detach()
         .cpu()
         .numpy()
         .reshape(*env.observation_space.shape)
