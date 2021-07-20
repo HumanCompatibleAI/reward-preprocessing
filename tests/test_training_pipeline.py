@@ -19,7 +19,7 @@ def test_dataset_creation(agent_path):
         path = Path(dirname) / "dataset"
         create_rollouts_ex.run(
             config_updates={
-                "model_path": str(agent_path),
+                "agent_path": str(agent_path),
                 "save_path": str(path),
                 "train_samples": 10,
                 "test_samples": 10,
