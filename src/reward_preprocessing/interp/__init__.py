@@ -18,11 +18,14 @@ use via CLI arguments.
 """
 
 from .noise import add_noise_potential, noise_ingredient
+from .sparsify import sparsify, sparsify_ingredient
 from .visualize_rollout import rollout_ingredient, visualize_rollout
 
 __all__ = [
     "rollout_ingredient",
     "visualize_rollout",
+    "sparsify_ingredient",
+    "sparsify",
     "noise_ingredient",
     "add_noise_potential",
 ]
