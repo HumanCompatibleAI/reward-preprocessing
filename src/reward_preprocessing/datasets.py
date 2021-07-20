@@ -1,14 +1,16 @@
 """Module for datasets consisting of transition-reward pairs."""
 from pathlib import Path
 from typing import Callable, List, Tuple
+import warnings
 
 import numpy as np
+from stable_baselines3.common.vec_env import VecEnv
 import torch
 
-from reward_preprocessing.transition import Transition
+from reward_preprocessing.transition import Transition, get_transitions
 
 
-class RewardData(torch.utils.data.Dataset):
+class StoredRewardData(torch.utils.data.Dataset):
     """Dataset of transition-reward pairs.
 
     Without any transforms, the outputs are Tuples consisting
@@ -62,6 +64,53 @@ class RewardData(torch.utils.data.Dataset):
         self.data.close()
 
 
+class DynamicRewardData(torch.utils.data.IterableDataset):
+    """Dataset of transition-reward pairs.
+
+    In contrast to StoredRewardData, transitions are generated
+    on the fly using a trained agent or by sampling actions
+    randomly.
+
+    Args:
+        venv (VecEnv): a vectorized gym environment
+        policy (optional): how to get actions. If None (default), actions
+            are sampled randomly. Alternatively, can be a stable-baselines BasePolicy or
+            BaseAlgorithm instance. Finally, this can be any function that takes
+            in an array of observations and returns an array or list of actions
+            for those observations.
+        deterministic_policy (bool, optional): Whether to use deterministic actions
+            or stochastic ones. Only relevant if a stable-baselines policy is used.
+            Defaults to True.
+        num (int, optional): Number of transitions to return. If None (default),
+            an infinite generator is returned.
+        transform: transforms to apply
+    """
+
+    def __init__(
+        self,
+        venv: VecEnv,
+        policy=None,
+        deterministic_policy: bool = True,
+        num: int = None,
+        transform: Callable = None,
+    ):
+        super().__init__()
+        self.transform = transform
+        self.venv = venv
+        self.policy = policy
+        self.deterministic_policy = deterministic_policy
+        self.num = num
+        self.state_shape = venv.observation_space.shape
+
+    def __iter__(self):
+        for out in get_transitions(
+            self.venv, self.policy, self.deterministic_policy, self.num
+        ):
+            if self.transform:
+                out = self.transform(out)
+            yield out
+
+
 def to_torch(x: Tuple[Transition, float]) -> Tuple[Transition, torch.Tensor]:
     transition, reward = x
     transition = transition.apply(
@@ -84,8 +133,8 @@ def get_worker_init_fn(path: Path, load_to_memory: bool = True):
     would usually be shared between workers, so this error would occur.
     As a workaround, we reload the .npz file in each worker.
 
-    This is a bit hacky because we duplicate code from the RewardData class
-    here (since RewardData should also work on its own, without any DataLoader).
+    This is a bit hacky because we duplicate code from the StoredRewardData class
+    here (since StoredRewardData should also work on its own, without any DataLoader).
     But so far, I haven't found a better solution.
     """
     mmap_mode = "r" if load_to_memory else None
@@ -115,3 +164,75 @@ def collate_fn(
         ),
         torch.stack([r for t, r in data]),
     )
+
+
+def get_data_loaders(
+    batch_size: int,
+    num_workers: int = 0,
+    data_path: str = None,
+    venv: VecEnv = None,
+    policy=None,
+    num_train: int = None,
+    num_test: int = None,
+    transform: Callable = None,
+) -> Tuple[torch.utils.data.DataLoader, torch.utils.data.DataLoader]:
+    if data_path is not None:
+        # if a path to a dataset is given, we use that
+        if policy is not None:
+            warnings.warn(
+                "A policy was set but will be ignored because a stored dataset is used."
+            )
+
+        path = Path(data_path)
+        train_data = StoredRewardData(path, transform=transform, train=True)
+        test_data = StoredRewardData(path, transform=transform, train=False)
+        if num_train is not None and num_train > len(train_data):
+            warnings.warn("Fewer training samples than asked for are available.")
+        if num_test is not None and num_test > len(test_data):
+            warnings.warn("Fewer test samples than asked for are available.")
+
+        train_loader = torch.utils.data.DataLoader(
+            train_data,
+            batch_size=batch_size,
+            shuffle=True,
+            num_workers=num_workers,
+            # workaround for https://github.com/numpy/numpy/issues/18124
+            # see docstring of get_worker_init_fn for details
+            worker_init_fn=get_worker_init_fn(path),
+            collate_fn=collate_fn,
+        )
+        test_loader = torch.utils.data.DataLoader(
+            test_data,
+            batch_size=batch_size,
+            shuffle=False,
+            num_workers=num_workers,
+            # workaround for https://github.com/numpy/numpy/issues/18124
+            # see docstring of get_worker_init_fn for details
+            worker_init_fn=get_worker_init_fn(path),
+            collate_fn=collate_fn,
+        )
+    else:
+        # if no path is given, we return a dataloader that generates samples
+        # dynamically
+        assert venv is not None, "Path to dataset or an environment are required."
+        if num_train is None or num_test is None:
+            warnings.warn(
+                "No number of samples given, will return an infinite DataLoader."
+            )
+        train_data = DynamicRewardData(venv, policy, num=num_train, transform=transform)
+        test_data = DynamicRewardData(venv, policy, num=num_test, transform=transform)
+
+        train_loader = torch.utils.data.DataLoader(
+            train_data,
+            batch_size=batch_size,
+            num_workers=num_workers,
+            collate_fn=collate_fn,
+        )
+        test_loader = torch.utils.data.DataLoader(
+            test_data,
+            batch_size=batch_size,
+            num_workers=num_workers,
+            collate_fn=collate_fn,
+        )
+
+    return train_loader, test_loader

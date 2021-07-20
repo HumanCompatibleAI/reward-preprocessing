@@ -2,25 +2,24 @@ from pathlib import Path
 import tempfile
 
 from sacred import Experiment
+from stable_baselines3 import PPO
 import torch
 from tqdm import tqdm
 
-from reward_preprocessing.datasets import (
-    RewardData,
-    collate_fn,
-    get_worker_init_fn,
-    to_torch,
-)
+from reward_preprocessing.datasets import get_data_loaders, to_torch
+from reward_preprocessing.env import create_env, env_ingredient
 from reward_preprocessing.models import MlpRewardModel
 from reward_preprocessing.utils import add_observers
 
-ex = Experiment("train_reward_model")
+ex = Experiment("train_reward_model", ingredients=[env_ingredient])
 add_observers(ex)
 
 
 @ex.config
 def config():
-    epochs = 10
+    # 1 epoch is a good default because when we use dynamically
+    # generated data, that's probably what we want
+    epochs = 1
     # If empty, the trained model is only saved via Sacred observers
     # (you can still extract it manually later).
     # But if you already know you will need the trained model, then
@@ -29,7 +28,10 @@ def config():
     save_path = None
     run_dir = "runs/reward_model"
     data_path = None
+    agent_path = None
     num_workers = 4
+    steps = 10000
+    test_steps = 5000
     batch_size = 32
 
     _ = locals()  # make flake8 happy
@@ -38,34 +40,29 @@ def config():
 
 @ex.automain
 def main(
-    epochs: int, num_workers: int, batch_size: int, data_path: str, save_path: str
+    epochs: int,
+    num_workers: int,
+    batch_size: int,
+    data_path: str,
+    save_path: str,
+    agent_path: str,
+    steps: int,
+    test_steps: int,
 ):
-    path = Path(data_path)
 
     transform = to_torch
+    if data_path:
+        # if a path to a dataset is given, we don't need an environment
+        env = None
+    else:
+        env = create_env()
+    if agent_path:
+        agent = PPO.load(agent_path)
+    else:
+        agent = None
 
-    train_data = RewardData(path, transform=transform, train=True)
-    test_data = RewardData(path, transform=transform, train=False)
-
-    train_loader = torch.utils.data.DataLoader(
-        train_data,
-        batch_size=batch_size,
-        shuffle=True,
-        num_workers=num_workers,
-        # workaround for https://github.com/numpy/numpy/issues/18124
-        # see docstring of get_worker_init_fn for details
-        worker_init_fn=get_worker_init_fn(path),
-        collate_fn=collate_fn,
-    )
-    test_loader = torch.utils.data.DataLoader(
-        test_data,
-        batch_size=batch_size,
-        shuffle=False,
-        num_workers=num_workers,
-        # workaround for https://github.com/numpy/numpy/issues/18124
-        # see docstring of get_worker_init_fn for details
-        worker_init_fn=get_worker_init_fn(path),
-        collate_fn=collate_fn,
+    train_loader, test_loader = get_data_loaders(
+        batch_size, num_workers, data_path, env, agent, steps, test_steps, transform
     )
 
     if torch.cuda.is_available():
@@ -73,7 +70,7 @@ def main(
     else:
         device = torch.device("cpu")
 
-    model = MlpRewardModel(train_data.state_shape).to(device)
+    model = MlpRewardModel(train_loader.dataset.state_shape).to(device)
     optimizer = torch.optim.Adam(model.parameters())
     loss_fn = torch.nn.MSELoss()
 
@@ -90,13 +87,11 @@ def main(
 
         test_loss = torch.tensor(0.0)
         with torch.no_grad():
+            i = 0
             for inputs, rewards in test_loader:
+                i += 1
                 test_loss += loss_fn(model(inputs.to(device)), rewards.to(device))
-        print(
-            "Epoch {:3d} | Test Loss: {:.6f}".format(
-                e, float(test_loss) / len(test_data)
-            )
-        )
+        print("Epoch {:3d} | Test Loss: {:.6f}".format(e, float(test_loss) / i))
 
     # if save_path is set, we don't actually need the temporary directory
     # but just always creating it makes the code simpler
