@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any, Mapping
 
 import gym
 from sacred import Ingredient
@@ -16,7 +16,7 @@ def config():
 
 
 @env_ingredient.capture
-def create_env(name: str, _seed: int, options: Dict[str, Any]):
+def create_env(name: str, _seed: int, options: Mapping[str, Any]):
     env = DummyVecEnv([lambda: gym.make(name, **options)])
     env.seed(_seed)
     return env
