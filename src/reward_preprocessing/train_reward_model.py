@@ -48,6 +48,7 @@ def main(
     agent_path: str,
     steps: int,
     test_steps: int,
+    _seed: int,
 ):
 
     transform = to_torch
@@ -62,7 +63,15 @@ def main(
         agent = None
 
     train_loader, test_loader = get_data_loaders(
-        batch_size, num_workers, data_path, env, agent, steps, test_steps, transform
+        batch_size,
+        num_workers,
+        _seed,
+        data_path,
+        env,
+        agent,
+        steps,
+        test_steps,
+        transform,
     )
 
     if torch.cuda.is_available():

@@ -57,14 +57,14 @@ def test_agent_training_different_seeds(tmp_path):
 
 
 @pytest.mark.expensive
-def test_reward_training_deterministic(data_path, tmp_path):
+def test_reward_training_deterministic_with_agent(agent_path, tmp_path):
     r1 = train_reward_model_ex.run(
         config_updates={
             "seed": 0,
             "run_dir": str(tmp_path),
-            "epochs": 1,
             "batch_size": 2,
-            "data_path": str(data_path),
+            "steps": 10,
+            "agent_path": str(agent_path),
         }
     )
 
@@ -72,9 +72,35 @@ def test_reward_training_deterministic(data_path, tmp_path):
         config_updates={
             "seed": 0,
             "run_dir": str(tmp_path),
-            "epochs": 1,
             "batch_size": 2,
-            "data_path": str(data_path),
+            "steps": 10,
+            "agent_path": str(agent_path),
+        }
+    )
+
+    # just a sanity check to ensure we actually evaluated
+    assert isinstance(r1.result, float)
+
+    assert r1.result == r2.result
+
+
+@pytest.mark.expensive
+def test_reward_training_deterministic_no_agent(tmp_path):
+    r1 = train_reward_model_ex.run(
+        config_updates={
+            "seed": 0,
+            "run_dir": str(tmp_path),
+            "batch_size": 2,
+            "steps": 10,
+        }
+    )
+
+    r2 = train_reward_model_ex.run(
+        config_updates={
+            "seed": 0,
+            "run_dir": str(tmp_path),
+            "batch_size": 2,
+            "steps": 10,
         }
     )
 
@@ -93,9 +119,8 @@ def test_reward_training_different_seeds(data_path, tmp_path):
         config_updates={
             "seed": 0,
             "run_dir": str(tmp_path),
-            "epochs": 1,
             "batch_size": 2,
-            "data_path": str(data_path),
+            "steps": 10,
         }
     )
 

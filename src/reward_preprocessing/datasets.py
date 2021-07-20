@@ -4,6 +4,8 @@ from typing import Callable, List, Tuple
 import warnings
 
 import numpy as np
+from stable_baselines3.common.base_class import BaseAlgorithm
+from stable_baselines3.common.policies import BasePolicy
 from stable_baselines3.common.vec_env import VecEnv
 import torch
 
@@ -93,6 +95,7 @@ class DynamicRewardData(torch.utils.data.IterableDataset):
         deterministic_policy: bool = True,
         num: int = None,
         transform: Callable = None,
+        seed: int = 0,
     ):
         super().__init__()
         self.transform = transform
@@ -101,6 +104,14 @@ class DynamicRewardData(torch.utils.data.IterableDataset):
         self.deterministic_policy = deterministic_policy
         self.num = num
         self.state_shape = venv.observation_space.shape
+
+        # seed environment and policy
+        self.venv.seed(seed)
+        # the action space uses a distinct random seed from the environment
+        # itself, which is important if we use randomly sampled actions
+        self.venv.action_space.np_random.seed(seed)
+        if isinstance(self.policy, (BasePolicy, BaseAlgorithm)):
+            self.policy.set_random_seed(seed)
 
     def __iter__(self):
         for out in get_transitions(
@@ -207,6 +218,7 @@ def _get_stored_data_loaders(
 
 def _get_dynamic_data_loaders(
     batch_size: int,
+    seed: int,
     venv: VecEnv,
     policy=None,
     num_train: int = None,
@@ -215,8 +227,12 @@ def _get_dynamic_data_loaders(
 ) -> Tuple[torch.utils.data.DataLoader, torch.utils.data.DataLoader]:
     if num_train is None or num_test is None:
         warnings.warn("No number of samples given, will return an infinite DataLoader.")
-    train_data = DynamicRewardData(venv, policy, num=num_train, transform=transform)
-    test_data = DynamicRewardData(venv, policy, num=num_test, transform=transform)
+    train_data = DynamicRewardData(
+        venv, policy, num=num_train, transform=transform, seed=seed
+    )
+    test_data = DynamicRewardData(
+        venv, policy, num=num_test, transform=transform, seed=seed
+    )
 
     train_loader = torch.utils.data.DataLoader(
         train_data,
@@ -234,6 +250,7 @@ def _get_dynamic_data_loaders(
 def get_data_loaders(
     batch_size: int,
     num_workers: int = 0,
+    seed: int = 0,
     data_path: str = None,
     venv: VecEnv = None,
     policy=None,
@@ -253,6 +270,8 @@ def get_data_loaders(
     Args:
         batch_size (int): batch size for the dataloaders
         num_workers (int, optional): number of dataloader workers. Defaults to 0.
+        seed (int, optional): random seed for env and policy, only relevant if
+            dynamic data is used.
         data_path (str, optional): path to a stored dataset for StoredRewardData.
         venv (VecEnv, optional): environment to use for rollouts, only required if
             `data_path` is None.
@@ -286,5 +305,5 @@ def get_data_loaders(
             "Multiple workers are currently not supported for dynamic datasets."
         )
     return _get_dynamic_data_loaders(
-        batch_size, venv, policy, num_train, num_test, transform
+        batch_size, seed, venv, policy, num_train, num_test, transform
     )
