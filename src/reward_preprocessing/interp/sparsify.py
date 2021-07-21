@@ -70,7 +70,6 @@ def sparsify(
     # the weights of the original model are automatically frozen,
     # we only train the final potential shaping
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-    scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.9)
 
     def loss_fn(x):
         return x.abs().mean()
@@ -84,12 +83,9 @@ def sparsify(
         loss.backward()
         optimizer.step()
         running_loss += loss.item()
-        if i % 20 == 19:
-            print("Loss: ", running_loss / 20)
-            running_loss = 0.0
         if i % 100 == 99:
-            scheduler.step()
-            print("LR: ", scheduler.get_lr())
+            print("Loss: ", running_loss / 100)
+            running_loss = 0.0
             print("Avg. episode length: ", i * batch_size / num_episodes.item())
 
     fig, ax = plt.subplots()
