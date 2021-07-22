@@ -1,5 +1,8 @@
+from pathlib import Path
+import tempfile
 from typing import Callable, List
 
+import matplotlib.pyplot as plt
 import sacred
 from stable_baselines3.common.vec_env import VecVideoRecorder
 from stable_baselines3.common.vec_env.base_vec_env import VecEnvObs
@@ -41,3 +44,20 @@ def add_observers(ex: sacred.Experiment) -> None:
             ex.observers.append(sacred.observers.FileStorageObserver(config["run_dir"]))
 
     ex.config_hook(helper)
+
+
+def sacred_save_fig(fig: plt.Figure, run, filename: str) -> None:
+    """Save a matplotlib figure as a Sacred artifact.
+
+    Args:
+        fig (plt.Figure): the Figure to be saved
+        run: the Sacred run instance (can be obtained via _run
+            in captured functions)
+        filename (str): the filename for the figure (without extension).
+            May also consist of folders, then this hierarchy
+            will be respected in the run directory for the Experiment.
+    """
+    with tempfile.TemporaryDirectory() as dirname:
+        plot_path = Path(dirname) / f"{filename}.pdf"
+        fig.savefig(plot_path)
+        run.add_artifact(plot_path)

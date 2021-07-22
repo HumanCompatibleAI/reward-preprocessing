@@ -1,13 +1,30 @@
+import warnings
+
 from sacred import Experiment
 from stable_baselines3 import PPO
 import torch
 
 from reward_preprocessing.env import create_env, env_ingredient
-from reward_preprocessing.interp import rollout_ingredient, visualize_rollout
+from reward_preprocessing.interp import (
+    add_noise_potential,
+    noise_ingredient,
+    rollout_ingredient,
+    sparsify,
+    sparsify_ingredient,
+    visualize_rollout,
+)
 from reward_preprocessing.models import MlpRewardModel
 from reward_preprocessing.utils import add_observers
 
-ex = Experiment("interpret", ingredients=[env_ingredient, rollout_ingredient])
+ex = Experiment(
+    "interpret",
+    ingredients=[
+        env_ingredient,
+        rollout_ingredient,
+        sparsify_ingredient,
+        noise_ingredient,
+    ],
+)
 add_observers(ex)
 
 
@@ -25,7 +42,11 @@ def config():
 @ex.automain
 def main(model_path: str, agent_path: str, gamma: float):
     env = create_env()
-    agent = PPO.load(agent_path)
+    agent = None
+    if agent_path:
+        agent = PPO.load(agent_path)
+        if agent.gamma != gamma:
+            warnings.warn("Agent was trained with different gamma value")
 
     if torch.cuda.is_available():
         device = torch.device("cuda")
@@ -33,6 +54,8 @@ def main(model_path: str, agent_path: str, gamma: float):
         device = torch.device("cpu")
     model = MlpRewardModel(env.observation_space.shape).to(device)
     model.load_state_dict(torch.load(model_path))
+    model = add_noise_potential(model, gamma)
+    model = sparsify(model, gamma=gamma, agent=agent)
     model.eval()
     visualize_rollout(model, env, agent=agent)
     env.close()
