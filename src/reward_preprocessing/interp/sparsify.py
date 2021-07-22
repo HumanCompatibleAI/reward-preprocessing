@@ -1,5 +1,3 @@
-from pathlib import Path
-import tempfile
 import warnings
 
 import matplotlib.pyplot as plt
@@ -10,6 +8,7 @@ from reward_preprocessing.datasets import get_data_loaders, to_torch
 from reward_preprocessing.env import create_env, env_ingredient
 from reward_preprocessing.models import RewardModel
 from reward_preprocessing.preprocessing.potential_shaping import TabularPotentialShaping
+from reward_preprocessing.utils import sacred_save_fig
 
 sparsify_ingredient = Ingredient("sparsify", ingredients=[env_ingredient])
 
@@ -102,10 +101,7 @@ def sparsify(
     ax.set(title="Learned potential")
     fig.colorbar(im, ax=ax)
 
-    with tempfile.TemporaryDirectory() as dirname:
-        path = Path(dirname) / "potential.pdf"
-        fig.savefig(path)
-        _run.add_artifact(path)
+    sacred_save_fig(fig, _run, "potential")
 
     env.close()
     return model

@@ -1,11 +1,9 @@
-from pathlib import Path
-import tempfile
-
 import matplotlib.pyplot as plt
 from sacred import Ingredient
 
 from reward_preprocessing.models import RewardModel
 from reward_preprocessing.preprocessing.potential_shaping import RandomPotentialShaping
+from reward_preprocessing.utils import sacred_save_fig
 
 noise_ingredient = Ingredient("noise")
 
@@ -38,9 +36,6 @@ def add_noise_potential(
     ax.set(title="Noise potential")
     fig.colorbar(im, ax=ax)
 
-    with tempfile.TemporaryDirectory() as dirname:
-        path = Path(dirname) / "noise_potential.pdf"
-        fig.savefig(path)
-        _run.add_artifact(path)
+    sacred_save_fig(fig, _run, "noise_potential")
 
     return model

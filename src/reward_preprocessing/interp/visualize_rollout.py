@@ -1,5 +1,3 @@
-from pathlib import Path
-import tempfile
 from typing import Tuple
 
 import gym
@@ -10,6 +8,7 @@ import torch
 
 from reward_preprocessing.models import RewardModel
 from reward_preprocessing.transition import get_transitions
+from reward_preprocessing.utils import sacred_save_fig
 
 rollout_ingredient = Ingredient("rollout_visualization")
 
@@ -18,7 +17,6 @@ rollout_ingredient = Ingredient("rollout_visualization")
 def config():
     enabled = True
     plot_shape = (4, 4)
-    save_path = None
     _ = locals()  # make flake8 happy
     del _
 
@@ -28,7 +26,6 @@ def visualize_rollout(
     model: RewardModel,
     env: gym.Env,
     plot_shape: Tuple[int, int],
-    save_path: str,
     enabled: bool,
     _run,
     agent=None,
@@ -38,7 +35,8 @@ def visualize_rollout(
     if not enabled:
         return
     n_rows, n_cols = plot_shape
-    plt.figure(figsize=(4 * n_rows, 4 * n_cols))
+    fig, ax = plt.subplots(n_rows, n_cols, figsize=(4 * n_rows, 4 * n_cols))
+    ax = ax.reshape(-1)
     for i, (transition, actual_reward) in enumerate(
         get_transitions(env, agent, num=n_rows * n_cols)
     ):
@@ -52,20 +50,11 @@ def visualize_rollout(
         transition = transition.apply(lambda x: x.float())
         predicted_reward = model(transition).item()
 
-        plt.subplot(n_rows, n_cols, i + 1)
-        plt.imshow(env.render(mode="rgb_array"))
-        plt.axis("off")
+        ax[i].imshow(env.render(mode="rgb_array"))
+        ax[i].set_axis_off()
         title = f"{predicted_reward:.2f} ({actual_reward:.2f})"
         if done:
             title += ", done"
-        plt.title(title)
+        ax[i].set(title=title)
 
-    with tempfile.TemporaryDirectory() as dirname:
-        path = Path(dirname)
-        # save the model
-        if save_path:
-            plot_path = Path(save_path)
-        else:
-            plot_path = path / "rollout.pdf"
-        plt.savefig(plot_path)
-        _run.add_artifact(plot_path)
+    sacred_save_fig(fig, _run, "rollout")
