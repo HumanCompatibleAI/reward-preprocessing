@@ -1,8 +1,6 @@
 from dataclasses import dataclass, field
 import math
-from pathlib import Path
 from queue import PriorityQueue
-import tempfile
 from typing import Tuple
 
 import gym
@@ -13,6 +11,7 @@ import torch
 
 from reward_preprocessing.models import RewardModel
 from reward_preprocessing.transition import get_transitions
+from reward_preprocessing.utils import sacred_save_fig
 
 
 @dataclass(order=True)
@@ -138,7 +137,4 @@ def visualize_transitions(
             ax[i + 1].set_axis_off()
         fig.tight_layout()
 
-        with tempfile.TemporaryDirectory() as dirname:
-            plot_path = Path(dirname) / f"{filename}.pdf"
-            fig.savefig(plot_path)
-            _run.add_artifact(plot_path)
+        sacred_save_fig(fig, _run, filename)
