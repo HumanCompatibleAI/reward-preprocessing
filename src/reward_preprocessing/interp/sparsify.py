@@ -20,6 +20,7 @@ def config():
     steps = 100000
     batch_size = 32
     lr = 0.01
+    log_every = 100
 
     _ = locals()  # make flake8 happy
     del _
@@ -33,6 +34,7 @@ def sparsify(
     steps: int,
     batch_size: int,
     lr: float,
+    log_every: int,
     _run,
     agent=None,
 ) -> RewardModel:
@@ -83,8 +85,8 @@ def sparsify(
         loss.backward()
         optimizer.step()
         running_loss += loss.item()
-        if i % 100 == 99:
-            print("Loss: ", running_loss / 100)
+        if i % log_every == log_every - 1:
+            print("Loss: ", running_loss / log_every)
             running_loss = 0.0
             print("Avg. episode length: ", i * batch_size / num_episodes.item())
 
