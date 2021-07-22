@@ -17,6 +17,7 @@ def config():
     enabled = True
     steps = 100000
     batch_size = 32
+    rollouts = "random"
     lr = 0.01
     log_every = 100
 
@@ -33,6 +34,7 @@ def sparsify(
     batch_size: int,
     lr: float,
     log_every: int,
+    rollouts: str,
     _run,
     agent=None,
 ) -> RewardModel:
@@ -46,13 +48,25 @@ def sparsify(
     else:
         device = torch.device("cpu")
 
-    if agent is not None and agent.gamma != gamma:
-        # We want to allow setting a different gamma value
-        # because that can be useful for quick experimentation.
-        # But the user should be aware of that.
-        warnings.warn(
-            "Agent was trained with different gamma value "
-            "than the one used for potential shaping."
+    if rollouts == "random":
+        agent = None
+    elif rollouts == "expert":
+        if agent is None:
+            raise ValueError(
+                "sparsify didn't receive an agent, expert rollouts can't be used"
+            )
+        if agent.gamma != gamma:
+            # We want to allow setting a different gamma value
+            # because that can be useful for quick experimentation.
+            # But the user should be aware of that.
+            warnings.warn(
+                "Agent was trained with different gamma value "
+                "than the one used for potential shaping."
+            )
+    else:
+        raise ValueError(
+            f"Invalid value {rollouts} for sparsify.rollouts. "
+            "Valid options are 'random' and 'expert'."
         )
 
     model = TabularPotentialShaping(model, gamma=gamma)
