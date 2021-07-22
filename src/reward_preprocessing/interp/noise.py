@@ -1,6 +1,3 @@
-from pathlib import Path
-import tempfile
-
 from sacred import Ingredient
 
 from reward_preprocessing.env import create_env, env_ingredient

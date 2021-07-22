@@ -21,6 +21,8 @@ def empty_maze():
     # this is currently the default anyway, but it's needed to
     # make the wrapper script work
     name = "EmptyMaze-v0"
+    _ = locals()  # make flake8 happy
+    del _
 
 
 @env_ingredient.named_config
