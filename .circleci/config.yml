@@ -31,7 +31,7 @@ jobs:
       - setup
       - run:
           name: Run tests
-          command: pipenv run pytest
+          command: xvfb pipenv run pytest
   lint:
     executor: main_executor
     steps:
