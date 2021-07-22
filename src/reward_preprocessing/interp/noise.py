@@ -3,7 +3,7 @@ from sacred import Ingredient
 from reward_preprocessing.env import create_env, env_ingredient
 from reward_preprocessing.models import RewardModel
 from reward_preprocessing.preprocessing.potential_shaping import instantiate_potential
-from reward_preprocessing.utils import sacred_save_fig
+from reward_preprocessing.utils import get_env_name, sacred_save_fig
 
 noise_ingredient = Ingredient("noise", ingredients=[env_ingredient])
 
@@ -34,7 +34,7 @@ def add_noise_potential(
 
     env = create_env()
 
-    env_name = env.envs[0].spec.id
+    env_name = get_env_name(env)
     wrapped_model = instantiate_potential(env_name, potential, model=model, gamma=gamma)
     try:
         wrapped_model.random_init(std=std, mean=mean)

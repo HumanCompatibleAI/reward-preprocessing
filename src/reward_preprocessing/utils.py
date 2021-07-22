@@ -6,7 +6,7 @@ from typing import Callable, List
 import matplotlib.pyplot as plt
 import sacred
 from stable_baselines3.common.vec_env import VecVideoRecorder
-from stable_baselines3.common.vec_env.base_vec_env import VecEnvObs
+from stable_baselines3.common.vec_env.base_vec_env import VecEnv, VecEnvObs
 
 
 class ContinuousVideoRecorder(VecVideoRecorder):
@@ -78,3 +78,9 @@ def instantiate(module_name: str, class_name: str, **kwargs):
     module = importlib.import_module(module_name)
     cls = getattr(module, class_name)
     return cls(**kwargs)
+
+
+def get_env_name(env: VecEnv) -> str:
+    """Return the name of a vectorized environment (such as 'MountainCar-v0')."""
+    # It's only one line but it's a somewhat hard to read and write one
+    return env.envs[0].spec.id

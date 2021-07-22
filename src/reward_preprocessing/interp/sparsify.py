@@ -7,7 +7,7 @@ from reward_preprocessing.datasets import get_data_loaders, to_torch
 from reward_preprocessing.env import create_env, env_ingredient
 from reward_preprocessing.models import RewardModel
 from reward_preprocessing.preprocessing.potential_shaping import instantiate_potential
-from reward_preprocessing.utils import sacred_save_fig
+from reward_preprocessing.utils import get_env_name, sacred_save_fig
 
 sparsify_ingredient = Ingredient("sparsify", ingredients=[env_ingredient])
 
@@ -71,7 +71,7 @@ def sparsify(
             "Valid options are 'random' and 'expert'."
         )
 
-    env_name = env.envs[0].spec.id
+    env_name = get_env_name(env)
     model = instantiate_potential(env_name, potential, model=model, gamma=gamma)
 
     train_loader, _ = get_data_loaders(
