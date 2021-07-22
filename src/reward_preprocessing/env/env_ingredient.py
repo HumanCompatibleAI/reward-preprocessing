@@ -10,7 +10,7 @@ env_ingredient = Ingredient("env")
 @env_ingredient.config
 def config():
     name = "EmptyMaze-v0"
-    options = {"size": 6, "random_start": True}
+    options = {}
     _ = locals()  # make flake8 happy
     del _
 
