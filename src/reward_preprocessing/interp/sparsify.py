@@ -6,15 +6,10 @@ import torch
 from reward_preprocessing.datasets import get_data_loaders, to_torch
 from reward_preprocessing.env import create_env, env_ingredient
 from reward_preprocessing.models import RewardModel
-from reward_preprocessing.utils import instantiate, sacred_save_fig
+from reward_preprocessing.preprocessing.potential_shaping import instantiate_potential
+from reward_preprocessing.utils import sacred_save_fig
 
 sparsify_ingredient = Ingredient("sparsify", ingredients=[env_ingredient])
-
-# dict mapping environment name to potential that will be used by default
-DEFAULT_POTENTIALS = {
-    "EmptyMaze-v0": "TabularPotentialShaping",
-    "MountainCar-v0": "LinearPotentialShaping",
-}
 
 
 @sparsify_ingredient.config
@@ -76,22 +71,8 @@ def sparsify(
             "Valid options are 'random' and 'expert'."
         )
 
-    if potential is None:
-        env_name = env.envs[0].unwrapped.spec.id
-        if env_name not in DEFAULT_POTENTIALS:
-            raise ValueError(
-                f"No default potential shaping class for environment '{env_name}' "
-                "is set. You need to specify the type of potential to use "
-                "by setting sparsify.potential"
-            )
-        potential = DEFAULT_POTENTIALS[env_name]
-
-    model = instantiate(
-        "reward_preprocessing.preprocessing.potential_shaping",
-        potential,
-        model=model,
-        gamma=gamma,
-    )
+    env_name = env.envs[0].spec.id
+    model = instantiate_potential(env_name, potential, model=model, gamma=gamma)
 
     train_loader, _ = get_data_loaders(
         batch_size=batch_size,
@@ -126,6 +107,7 @@ def sparsify(
 
     try:
         fig = model.plot(env)
+        fig.suptitle("Learned potential")
         sacred_save_fig(fig, _run, "potential")
     except NotImplementedError:
         print("Potential can't be plotted, skipping")
