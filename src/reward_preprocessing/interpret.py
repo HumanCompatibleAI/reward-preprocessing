@@ -42,12 +42,11 @@ def config():
 @ex.automain
 def main(model_path: str, agent_path: str, gamma: float):
     env = create_env()
+    agent = None
     if agent_path:
         agent = PPO.load(agent_path)
         if agent.gamma != gamma:
             warnings.warn("Agent was trained with different gamma value")
-    else:
-        agent = None
 
     if torch.cuda.is_available():
         device = torch.device("cuda")
