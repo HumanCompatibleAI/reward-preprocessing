@@ -55,5 +55,9 @@ jobs:
 workflows:
   main:
     jobs:
-      - lint
-      - test
+      - lint:
+          context:
+          - MuJoCo
+      - test:
+          context:
+          - MuJoCo
