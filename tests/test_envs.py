@@ -21,6 +21,22 @@ def test_empty_maze():
     env.close()
 
 
+def test_mujoco():
+    env = gym.make("HalfCheetah-v2")
+
+    obs = env.reset()
+    for _ in range(10):
+        action = env.action_space.sample()
+        obs, reward, done, info = env.step(action)
+        if done:
+            obs = env.reset()
+        assert isinstance(obs, np.ndarray)
+        assert isinstance(reward, float)
+        assert isinstance(done, bool)
+        assert isinstance(info, dict)
+    env.close()
+
+
 def test_mock_env(mock_env):
     env = mock_env
     assert env.reset() == 5
