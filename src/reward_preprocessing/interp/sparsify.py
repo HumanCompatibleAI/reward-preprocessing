@@ -6,10 +6,15 @@ import torch
 from reward_preprocessing.datasets import get_data_loaders, to_torch
 from reward_preprocessing.env import create_env, env_ingredient
 from reward_preprocessing.models import RewardModel
-from reward_preprocessing.preprocessing.potential_shaping import TabularPotentialShaping
-from reward_preprocessing.utils import sacred_save_fig
+from reward_preprocessing.utils import instantiate, sacred_save_fig
 
 sparsify_ingredient = Ingredient("sparsify", ingredients=[env_ingredient])
+
+# dict mapping environment name to potential that will be used by default
+DEFAULT_POTENTIALS = {
+    "EmptyMaze-v0": "TabularPotentialShaping",
+    "MountainCar-v0": "LinearPotentialShaping",
+}
 
 
 @sparsify_ingredient.config
@@ -18,6 +23,7 @@ def config():
     steps = 100000
     batch_size = 32
     rollouts = "random"
+    potential = None
     lr = 0.01
     log_every = 100
 
@@ -35,6 +41,7 @@ def sparsify(
     lr: float,
     log_every: int,
     rollouts: str,
+    potential: str,
     _run,
     agent=None,
 ) -> RewardModel:
@@ -69,7 +76,22 @@ def sparsify(
             "Valid options are 'random' and 'expert'."
         )
 
-    model = TabularPotentialShaping(model, gamma=gamma)
+    if potential is None:
+        env_name = env.envs[0].unwrapped.spec.id
+        if env_name not in DEFAULT_POTENTIALS:
+            raise ValueError(
+                f"No default potential shaping class for environment '{env_name}' "
+                "is set. You need to specify the type of potential to use "
+                "by setting sparsify.potential"
+            )
+        potential = DEFAULT_POTENTIALS[env_name]
+
+    model = instantiate(
+        "reward_preprocessing.preprocessing.potential_shaping",
+        potential,
+        model=model,
+        gamma=gamma,
+    )
 
     train_loader, _ = get_data_loaders(
         batch_size=batch_size,

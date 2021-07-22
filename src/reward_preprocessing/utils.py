@@ -1,3 +1,4 @@
+import importlib
 from pathlib import Path
 import tempfile
 from typing import Callable, List
@@ -61,3 +62,19 @@ def sacred_save_fig(fig: plt.Figure, run, filename: str) -> None:
         plot_path = Path(dirname) / f"{filename}.pdf"
         fig.savefig(plot_path)
         run.add_artifact(plot_path)
+
+
+def instantiate(module_name: str, class_name: str, **kwargs):
+    """Instantiate a class from a string.
+
+    Args:
+        module_name (str): the full name of the module the class is located in
+        class_name (str): the name of the class to instantiate
+        **kwargs: kwargs to pass on to the class constructor
+
+    Returns:
+        an instance of the given class
+    """
+    module = importlib.import_module(module_name)
+    cls = getattr(module, class_name)
+    return cls(**kwargs)
