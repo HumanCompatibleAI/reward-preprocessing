@@ -155,8 +155,8 @@ class MlpPotentialShaping(PotentialShaping):
             param.requires_grad = False
 
 
-class TabularPotentialShaping(PotentialShaping):
-    """A preprocessor that adds a learned potential shaping in a tabular setting."""
+class MazelabPotentialShaping(PotentialShaping):
+    """A preprocessor that adds a learned potential shaping in Mazelab environment."""
 
     def __init__(self, model: RewardModel, gamma: float):
         super().__init__(model, self._potential, gamma)
@@ -191,7 +191,7 @@ class TabularPotentialShaping(PotentialShaping):
 
 # dict mapping environment name to potential that will be used by default
 DEFAULT_POTENTIALS = {
-    "EmptyMaze-v0": "TabularPotentialShaping",
+    "EmptyMaze-v0": "MazelabPotentialShaping",
     "MountainCar-v0": "LinearPotentialShaping",
 }
 
