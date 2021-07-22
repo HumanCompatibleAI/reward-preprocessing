@@ -3,10 +3,11 @@ import pytest
 
 from reward_preprocessing.train_agent import ex as train_agent_ex
 from reward_preprocessing.train_reward_model import ex as train_reward_model_ex
+from reward_preprocessing.utils import get_env_name
 
 
 @pytest.mark.expensive
-def test_agent_training_deterministic(tmp_path):
+def test_agent_training_deterministic(env, tmp_path):
     # for now we just check that it works without errors
     r1 = train_agent_ex.run(
         config_updates={
@@ -14,6 +15,7 @@ def test_agent_training_deterministic(tmp_path):
             "run_dir": str(tmp_path),
             "steps": 10,
             "num_frames": 10,
+            "env.name": get_env_name(env),
         }
     )
 
@@ -23,6 +25,7 @@ def test_agent_training_deterministic(tmp_path):
             "run_dir": str(tmp_path),
             "steps": 10,
             "num_frames": 10,
+            "env.name": get_env_name(env),
         }
     )
 
@@ -30,7 +33,7 @@ def test_agent_training_deterministic(tmp_path):
 
 
 @pytest.mark.expensive
-def test_agent_training_different_seeds(tmp_path):
+def test_agent_training_different_seeds(env, tmp_path):
     """A sanity check: with different seeds, the results should be different.
     Otherwise, the determinism test apparently doesn't work.
     """
@@ -41,6 +44,7 @@ def test_agent_training_different_seeds(tmp_path):
             "run_dir": str(tmp_path),
             "steps": 10,
             "num_frames": 10,
+            "env.name": get_env_name(env),
         }
     )
 
@@ -50,6 +54,7 @@ def test_agent_training_different_seeds(tmp_path):
             "run_dir": str(tmp_path),
             "steps": 10,
             "num_frames": 10,
+            "env.name": get_env_name(env),
         }
     )
 
@@ -57,7 +62,7 @@ def test_agent_training_different_seeds(tmp_path):
 
 
 @pytest.mark.expensive
-def test_reward_training_deterministic_with_agent(agent_path, tmp_path):
+def test_reward_training_deterministic_with_agent(env, agent_path, tmp_path):
     r1 = train_reward_model_ex.run(
         config_updates={
             "seed": 0,
@@ -65,6 +70,7 @@ def test_reward_training_deterministic_with_agent(agent_path, tmp_path):
             "batch_size": 2,
             "steps": 10,
             "agent_path": str(agent_path),
+            "env.name": get_env_name(env),
         }
     )
 
@@ -75,6 +81,7 @@ def test_reward_training_deterministic_with_agent(agent_path, tmp_path):
             "batch_size": 2,
             "steps": 10,
             "agent_path": str(agent_path),
+            "env.name": get_env_name(env),
         }
     )
 
@@ -85,13 +92,14 @@ def test_reward_training_deterministic_with_agent(agent_path, tmp_path):
 
 
 @pytest.mark.expensive
-def test_reward_training_deterministic_no_agent(tmp_path):
+def test_reward_training_deterministic_no_agent(env, tmp_path):
     r1 = train_reward_model_ex.run(
         config_updates={
             "seed": 0,
             "run_dir": str(tmp_path),
             "batch_size": 2,
             "steps": 10,
+            "env.name": get_env_name(env),
         }
     )
 
@@ -101,6 +109,7 @@ def test_reward_training_deterministic_no_agent(tmp_path):
             "run_dir": str(tmp_path),
             "batch_size": 2,
             "steps": 10,
+            "env.name": get_env_name(env),
         }
     )
 
@@ -111,7 +120,7 @@ def test_reward_training_deterministic_no_agent(tmp_path):
 
 
 @pytest.mark.expensive
-def test_reward_training_different_seeds(data_path, tmp_path):
+def test_reward_training_different_seeds(env, data_path, tmp_path):
     """A sanity check: with different seeds, the results should be different.
     Otherwise, the determinism test apparently doesn't work.
     """
@@ -121,6 +130,7 @@ def test_reward_training_different_seeds(data_path, tmp_path):
             "run_dir": str(tmp_path),
             "batch_size": 2,
             "steps": 10,
+            "env.name": get_env_name(env),
         }
     )
 
@@ -128,9 +138,9 @@ def test_reward_training_different_seeds(data_path, tmp_path):
         config_updates={
             "seed": 1,
             "run_dir": str(tmp_path),
-            "epochs": 1,
             "batch_size": 2,
-            "data_path": str(data_path),
+            "steps": 10,
+            "env.name": get_env_name(env),
         }
     )
 
