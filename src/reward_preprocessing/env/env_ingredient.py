@@ -21,6 +21,12 @@ def empty_maze():
     # this is currently the default anyway, but it's needed to
     # make the wrapper script work
     name = "EmptyMaze-v0"
+
+
+@env_ingredient.named_config
+def mountain_car():
+    name = "MountainCar-v0"
+    stats_path = "results/stats/MountainCar-v0.pkl"
     _ = locals()  # make flake8 happy
     del _
 
