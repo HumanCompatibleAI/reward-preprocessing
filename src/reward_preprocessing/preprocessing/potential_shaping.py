@@ -123,7 +123,7 @@ class LinearPotentialShaping(PotentialShaping):
 
 class MlpPotentialShaping(PotentialShaping):
     """A potential shaping preprocessor with a learned MLP potential.
-    ReLU activation functions and 2 hidden layers.
+    Uses ReLU activation functions.
 
     Args:
         state_shape: shape of the observations the environment produces
@@ -132,16 +132,21 @@ class MlpPotentialShaping(PotentialShaping):
         hidden_size (optional): number of neurons in each hidden layer
     """
 
-    def __init__(self, model: RewardModel, gamma: float, hidden_size: int = 64):
+    def __init__(
+        self,
+        model: RewardModel,
+        gamma: float,
+        hidden_size: int = 64,
+        num_hidden: int = 1,
+    ):
         in_size = np.product(model.state_shape)
-        potential = nn.Sequential(
-            nn.Flatten(),
-            nn.Linear(in_size, hidden_size),
-            nn.ReLU(),
-            nn.Linear(hidden_size, hidden_size),
-            nn.ReLU(),
-            nn.Linear(hidden_size, 1),
-        )
+        layers = [nn.Flatten(), nn.Linear(in_size, hidden_size), nn.ReLU()]
+        for _ in range(num_hidden):
+            layers.append(nn.Linear(hidden_size, hidden_size))
+            layers.append(nn.ReLU())
+        layers.append(nn.Linear(hidden_size, 1))
+
+        potential = nn.Sequential(*layers)
         super().__init__(model, potential, gamma)
 
     def random_init(self, mean: float = 0, std: float = 1) -> None:
