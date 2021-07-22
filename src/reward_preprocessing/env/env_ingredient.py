@@ -15,6 +15,15 @@ def config():
     del _
 
 
+@env_ingredient.named_config
+def empty_maze():
+    # this is currently the default anyway, but it's needed to
+    # make the wrapper script work
+    name = "EmptyMaze-v0"
+    _ = locals()  # make flake8 happy
+    del _
+
+
 @env_ingredient.capture
 def create_env(name: str, _seed: int, options: Mapping[str, Any]):
     env = DummyVecEnv([lambda: gym.make(name, **options)])
