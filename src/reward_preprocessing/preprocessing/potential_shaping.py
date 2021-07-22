@@ -116,7 +116,7 @@ class LinearPotentialShaping(PotentialShaping):
         super().__init__(model, potential, gamma)
 
     def random_init(self, mean: float = 0, std: float = 1) -> None:
-        for param in self.potential.parameters():
+        for param in self.potential.parameters():  # pytype: disable=attribute-error
             nn.init.normal_(param, mean=mean, std=std)
             param.requires_grad = False
 
@@ -150,7 +150,7 @@ class MlpPotentialShaping(PotentialShaping):
         super().__init__(model, potential, gamma)
 
     def random_init(self, mean: float = 0, std: float = 1) -> None:
-        for param in self.potential.parameters():
+        for param in self.potential.parameters():  # pytype: disable=attribute-error
             nn.init.normal_(param, mean=mean, std=std)
             param.requires_grad = False
 
