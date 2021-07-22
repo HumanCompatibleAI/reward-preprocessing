@@ -1,6 +1,5 @@
 import warnings
 
-import matplotlib.pyplot as plt
 from sacred import Ingredient
 import torch
 
@@ -89,19 +88,11 @@ def sparsify(
             running_loss = 0.0
             print("Avg. episode length: ", i * batch_size / num_episodes.item())
 
-    fig, ax = plt.subplots()
-
-    im = ax.imshow(
-        model.potential_data.detach()
-        .cpu()
-        .numpy()
-        .reshape(*env.observation_space.shape)
-    )
-    ax.set_axis_off()
-    ax.set(title="Learned potential")
-    fig.colorbar(im, ax=ax)
-
-    sacred_save_fig(fig, _run, "potential")
+    try:
+        fig = model.plot(env)
+        sacred_save_fig(fig, _run, "potential")
+    except NotImplementedError:
+        print("Potential can't be plotted, skipping")
 
     env.close()
     return model
