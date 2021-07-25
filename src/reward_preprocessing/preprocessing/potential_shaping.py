@@ -7,7 +7,7 @@ states to floats. PotentialShaping is the most general case,
 while the other classes in this module are helper classes
 that use a particular type of potential.
 """
-from typing import Callable
+from typing import Callable, Optional
 
 import gym
 import matplotlib.pyplot as plt
@@ -202,7 +202,7 @@ DEFAULT_POTENTIALS = {
 
 
 def instantiate_potential(
-    env_name: str = None, potential_name: str = None, **kwargs
+    env_name: Optional[str] = None, potential_name: Optional[str] = None, **kwargs
 ) -> PotentialShaping:
     """Create the right PotentialShaping instance for a given environment.
 
