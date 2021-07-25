@@ -7,7 +7,7 @@ get_transitions is a helper function to generate a set
 of transition-reward pairs from an environment and a policy.
 """
 from dataclasses import dataclass
-from typing import Any, Callable, Iterator, Tuple, Union
+from typing import Any, Callable, Iterator, Optional, Tuple, Union
 
 import numpy as np
 from stable_baselines3.common.base_class import BaseAlgorithm
@@ -45,7 +45,10 @@ class Transition:
 
 
 def get_transitions(
-    venv: VecEnv, policy=None, deterministic_policy: bool = True, num: int = None
+    venv: VecEnv,
+    policy=None,
+    deterministic_policy: bool = True,
+    num: Optional[int] = None,
 ) -> Iterator[Tuple[Transition, float]]:
     """Generate transitions using a given environment and policy.
 
