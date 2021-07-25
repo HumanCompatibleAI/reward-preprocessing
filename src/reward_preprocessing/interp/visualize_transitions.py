@@ -17,10 +17,10 @@ from reward_preprocessing.utils import sacred_save_fig
 @dataclass(order=True)
 class TransitionData:
     priority: float
-    actual_reward: float
-    predicted_reward: float
-    # We don't want to use arrays for comparison.
+    # We only want to compare based on priority.
     # See https://docs.python.org/3/library/queue.html#queue.PriorityQueue
+    actual_reward: float = field(compare=False)
+    predicted_reward: float = field(compare=False)
     img: Tuple[np.ndarray, np.ndarray] = field(compare=False)
 
 
