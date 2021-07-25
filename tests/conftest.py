@@ -92,7 +92,7 @@ def venv(env):
     # The point of this complicated procedure is to reuse the parametrization
     # of the env fixture. If a test depends on both this venv fixture
     # and e.g. agent_path (which depends on env), we want to use the same
-    # env for both fixtures.
+    # type of environment for both fixtures.
     # I think an alternative would be to declare the parameters in the top-level
     # tests and then access them in fixtures like this:
     # https://pytest.org/en/6.2.x/fixture.html#using-markers-to-pass-data-to-fixtures
