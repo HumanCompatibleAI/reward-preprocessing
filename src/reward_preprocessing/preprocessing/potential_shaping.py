@@ -141,7 +141,12 @@ class MlpPotentialShaping(PotentialShaping):
     ):
         in_size = np.product(model.state_shape)
         layers = [nn.Flatten(), nn.Linear(in_size, hidden_size), nn.ReLU()]
-        for _ in range(num_hidden):
+        if num_hidden < 1:
+            raise ValueError(
+                "MLP must have at least one hidden layer. "
+                "Did you mean to use LinearPotentialShaping instead?"
+            )
+        for _ in range(num_hidden - 1):
             layers.append(nn.Linear(hidden_size, hidden_size))
             layers.append(nn.ReLU())
         layers.append(nn.Linear(hidden_size, 1))
