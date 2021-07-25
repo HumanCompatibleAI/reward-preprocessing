@@ -83,5 +83,5 @@ def instantiate(module_name: str, class_name: str, **kwargs):
 def get_env_name(env: VecEnv) -> str:
     """Return the name of a vectorized environment (such as 'MountainCar-v0')."""
     # It's only one line but it's a somewhat hard to read and write one
-    specs = env.get_attr('spec', indices=[0])
+    specs = env.get_attr("spec", indices=[0])
     return specs[0].id
