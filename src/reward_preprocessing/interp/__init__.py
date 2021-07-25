@@ -20,6 +20,7 @@ use via CLI arguments.
 from .noise import add_noise_potential, noise_ingredient
 from .sparsify import sparsify, sparsify_ingredient
 from .visualize_rollout import rollout_ingredient, visualize_rollout
+from .visualize_transitions import transition_ingredient, visualize_transitions
 
 __all__ = [
     "rollout_ingredient",
@@ -28,4 +29,6 @@ __all__ = [
     "sparsify",
     "noise_ingredient",
     "add_noise_potential",
+    "visualize_transitions",
+    "transition_ingredient",
 ]

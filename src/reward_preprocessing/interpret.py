@@ -11,7 +11,9 @@ from reward_preprocessing.interp import (
     rollout_ingredient,
     sparsify,
     sparsify_ingredient,
+    transition_ingredient,
     visualize_rollout,
+    visualize_transitions,
 )
 from reward_preprocessing.models import MlpRewardModel
 from reward_preprocessing.utils import add_observers
@@ -23,6 +25,7 @@ ex = Experiment(
         rollout_ingredient,
         sparsify_ingredient,
         noise_ingredient,
+        transition_ingredient,
     ],
 )
 add_observers(ex)
@@ -57,5 +60,6 @@ def main(model_path: str, agent_path: str, gamma: float):
     model = add_noise_potential(model, gamma)
     model = sparsify(model, gamma=gamma, agent=agent)
     model.eval()
+    visualize_transitions(model, env, agent=agent)
     visualize_rollout(model, env, agent=agent)
     env.close()

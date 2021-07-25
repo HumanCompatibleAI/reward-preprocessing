@@ -7,6 +7,7 @@ import torch
 
 from reward_preprocessing.models import MlpRewardModel
 from reward_preprocessing.transition import get_transitions
+from reward_preprocessing.utils import get_env_name
 
 
 class MockEnv(gym.Env):
@@ -56,12 +57,12 @@ gym.envs.register(
 )
 
 
-@pytest.fixture
-def env():
+@pytest.fixture(params=["EmptyMaze-v0", "MountainCar-v0"])
+def env(request):
     """Return a gym environment."""
     from reward_preprocessing.env import create_env
 
-    env = create_env("EmptyMaze-v0")
+    env = create_env(request.param, _seed=0, options={}, stats_path=None)
     yield env
     env.close()
 
@@ -85,12 +86,23 @@ def mock_venv():
 
 
 @pytest.fixture
-def venv():
+def venv(env):
     """Return a vectorized environment containing multiple environments."""
 
-    env = DummyVecEnv([lambda: gym.make("EmptyMaze-v0")] * 5)
-    yield env
-    env.close()
+    # The point of this complicated procedure is to reuse the parametrization
+    # of the env fixture. If a test depends on both this venv fixture
+    # and e.g. agent_path (which depends on env), we want to use the same
+    # type of environment for both fixtures.
+    # I think an alternative would be to declare the parameters in the top-level
+    # tests and then access them in fixtures like this:
+    # https://pytest.org/en/6.2.x/fixture.html#using-markers-to-pass-data-to-fixtures
+    # Would be more flexible, so we might have to switch at some point.
+    # But for now, this solution has the advantage that every test that relies
+    # on environments will be run with all environments automatically.
+    env_name = get_env_name(env)
+    venv = DummyVecEnv([lambda: gym.make(env_name)] * 5)
+    yield venv
+    venv.close()
 
 
 @pytest.fixture
@@ -113,7 +125,6 @@ def agent_path(agent, tmp_path):
 @pytest.fixture
 def model(env):
     """Return an (untrained) dummy reward model."""
-
     return MlpRewardModel(env.observation_space.shape)
 
 

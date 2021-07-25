@@ -31,7 +31,9 @@ jobs:
       - setup
       - run:
           name: Run tests
-          command: pipenv run pytest
+          # CircleCI ignores the Docker ENTRYPOINT, so we need
+          # /tini -- xvfb-run here again
+          command: /tini -- xvfb-run pipenv run pytest
   lint:
     executor: main_executor
     steps:

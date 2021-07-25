@@ -1,14 +1,14 @@
+from typing import Any, Mapping
 import warnings
 
-import matplotlib.pyplot as plt
 from sacred import Ingredient
 import torch
 
 from reward_preprocessing.datasets import get_data_loaders, to_torch
 from reward_preprocessing.env import create_env, env_ingredient
 from reward_preprocessing.models import RewardModel
-from reward_preprocessing.preprocessing.potential_shaping import TabularPotentialShaping
-from reward_preprocessing.utils import sacred_save_fig
+from reward_preprocessing.preprocessing.potential_shaping import instantiate_potential
+from reward_preprocessing.utils import get_env_name, sacred_save_fig
 
 sparsify_ingredient = Ingredient("sparsify", ingredients=[env_ingredient])
 
@@ -18,8 +18,13 @@ def config():
     enabled = True
     steps = 100000
     batch_size = 32
+    rollouts = "random"
+    potential = None
+    potential_options = {}
     lr = 0.01
     log_every = 100
+    lr_decay_rate = None
+    lr_decay_every = 100
 
     _ = locals()  # make flake8 happy
     del _
@@ -33,7 +38,12 @@ def sparsify(
     steps: int,
     batch_size: int,
     lr: float,
+    lr_decay_rate: float,
+    lr_decay_every: int,
+    potential_options: Mapping[str, Any],
     log_every: int,
+    rollouts: str,
+    potential: str,
     _run,
     agent=None,
 ) -> RewardModel:
@@ -47,16 +57,31 @@ def sparsify(
     else:
         device = torch.device("cpu")
 
-    if agent is not None and agent.gamma != gamma:
-        # We want to allow setting a different gamma value
-        # because that can be useful for quick experimentation.
-        # But the user should be aware of that.
-        warnings.warn(
-            "Agent was trained with different gamma value "
-            "than the one used for potential shaping."
+    if rollouts == "random":
+        agent = None
+    elif rollouts == "expert":
+        if agent is None:
+            raise ValueError(
+                "sparsify didn't receive an agent, expert rollouts can't be used"
+            )
+        if agent.gamma != gamma:
+            # We want to allow setting a different gamma value
+            # because that can be useful for quick experimentation.
+            # But the user should be aware of that.
+            warnings.warn(
+                "Agent was trained with different gamma value "
+                "than the one used for potential shaping."
+            )
+    else:
+        raise ValueError(
+            f"Invalid value {rollouts} for sparsify.rollouts. "
+            "Valid options are 'random' and 'expert'."
         )
 
-    model = TabularPotentialShaping(model, gamma=gamma)
+    env_name = get_env_name(env)
+    model = instantiate_potential(
+        env_name, potential, model=model, gamma=gamma, **potential_options
+    )
 
     train_loader, _ = get_data_loaders(
         batch_size=batch_size,
@@ -71,6 +96,11 @@ def sparsify(
     # the weights of the original model are automatically frozen,
     # we only train the final potential shaping
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    scheduler = None
+    if lr_decay_rate is not None:
+        scheduler = torch.optim.lr_scheduler.ExponentialLR(
+            optimizer, gamma=lr_decay_rate
+        )
 
     def loss_fn(x):
         return x.abs().mean()
@@ -81,27 +111,26 @@ def sparsify(
         optimizer.zero_grad()
         num_episodes += torch.sum(inputs.done)
         loss = loss_fn(model(inputs.to(device)))
+        if i == 0:
+            print("Initial loss: ", loss.item())
+            print(model(inputs.to(device)))
         loss.backward()
         optimizer.step()
+        if scheduler and i % lr_decay_every == lr_decay_every - 1:
+            scheduler.step()
+            print(f"LR: {scheduler.get_last_lr()[0]:.2E}")
         running_loss += loss.item()
         if i % log_every == log_every - 1:
-            print("Loss: ", running_loss / log_every)
+            print(f"Loss: {running_loss / log_every:2E}")
             running_loss = 0.0
-            print("Avg. episode length: ", i * batch_size / num_episodes.item())
+            print(f"Avg. episode length: {i * batch_size / num_episodes.item():.1f}")
 
-    fig, ax = plt.subplots()
-
-    im = ax.imshow(
-        model.potential_data.detach()
-        .cpu()
-        .numpy()
-        .reshape(*env.observation_space.shape)
-    )
-    ax.set_axis_off()
-    ax.set(title="Learned potential")
-    fig.colorbar(im, ax=ax)
-
-    sacred_save_fig(fig, _run, "potential")
+    try:
+        fig = model.plot(env)
+        fig.suptitle("Learned potential")
+        sacred_save_fig(fig, _run, "potential")
+    except NotImplementedError:
+        print("Potential can't be plotted, skipping")
 
     env.close()
     return model

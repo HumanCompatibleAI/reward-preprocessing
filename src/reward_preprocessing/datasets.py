@@ -1,6 +1,6 @@
 """Module for datasets consisting of transition-reward pairs."""
 from pathlib import Path
-from typing import Callable, List, Tuple
+from typing import Callable, List, Optional, Tuple
 import warnings
 
 import numpy as np
@@ -34,7 +34,7 @@ class StoredRewardData(torch.utils.data.Dataset):
         self,
         path: Path,
         train: bool = True,
-        transform: Callable = None,
+        transform: Optional[Callable] = None,
         load_to_memory: bool = True,
     ):
         # If you change the data loading code here, also change it
@@ -93,8 +93,8 @@ class DynamicRewardData(torch.utils.data.IterableDataset):
         venv: VecEnv,
         policy=None,
         deterministic_policy: bool = True,
-        num: int = None,
-        transform: Callable = None,
+        num: Optional[int] = None,
+        transform: Optional[Callable] = None,
         seed: int = 0,
     ):
         super().__init__()
@@ -178,9 +178,9 @@ def _get_stored_data_loaders(
     batch_size: int,
     num_workers: int,
     data_path: str,
-    num_train: int = None,
-    num_test: int = None,
-    transform: Callable = None,
+    num_train: Optional[int] = None,
+    num_test: Optional[int] = None,
+    transform: Optional[Callable] = None,
 ) -> Tuple[torch.utils.data.DataLoader, torch.utils.data.DataLoader]:
     path = Path(data_path)
     train_data = StoredRewardData(path, transform=transform, train=True)
@@ -218,9 +218,9 @@ def _get_dynamic_data_loaders(
     seed: int,
     venv: VecEnv,
     policy=None,
-    num_train: int = None,
-    num_test: int = None,
-    transform: Callable = None,
+    num_train: Optional[int] = None,
+    num_test: Optional[int] = None,
+    transform: Optional[Callable] = None,
 ) -> Tuple[torch.utils.data.DataLoader, torch.utils.data.DataLoader]:
     if num_train is None or num_test is None:
         warnings.warn("No number of samples given, will return an infinite DataLoader.")
@@ -248,12 +248,12 @@ def get_data_loaders(
     batch_size: int,
     num_workers: int = 0,
     seed: int = 0,
-    data_path: str = None,
-    venv: VecEnv = None,
+    data_path: Optional[str] = None,
+    venv: Optional[VecEnv] = None,
     policy=None,
-    num_train: int = None,
-    num_test: int = None,
-    transform: Callable = None,
+    num_train: Optional[int] = None,
+    num_test: Optional[int] = None,
+    transform: Optional[Callable] = None,
 ) -> Tuple[torch.utils.data.DataLoader, torch.utils.data.DataLoader]:
     """Create train and test Pytorch dataloaders for transitions.
 
