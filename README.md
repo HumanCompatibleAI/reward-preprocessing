@@ -27,8 +27,8 @@ Mujoco key file in `/root/.mujoco/mjkey.txt` is empty in the image, you will nee
 to enter a valid license key there.
 
 If you use the `latest` tag of the image, you will get an image that already
-includes and is ready to go (except for the Mujoco key). You can also mount
-the code into the Docker image from your local disk (e.g. for development purposes).
+includes the code and is ready to go (except for the Mujoco key). You can also mount
+the code into the Docker image from your local disk instead (e.g. for development purposes).
 In that case, we suggest you use `scripts/start_docker.sh`. More specifically:
 - Set the `MUJOCO_KEY_URL` environment variable to a URL that returns a Mujoco key
   when accessed
