@@ -224,6 +224,7 @@ class MazelabPotentialShaping(PotentialShaping):
 DEFAULT_POTENTIALS = {
     "EmptyMaze-v0": "MazelabPotentialShaping",
     "MountainCar-v0": "LinearPotentialShaping",
+    "HalfCheetah-v2": "LinearPotentialShaping",
 }
 
 
