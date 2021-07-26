@@ -15,5 +15,7 @@ cd /reward_preprocessing
 pipenv run python setup.py sdist bdist_wheel
 pipenv run pip install dist/reward_preprocessing-*.whl
 
+# Download the Mujoco key
+curl -o /root/.mujoco/mjkey.txt "$MUJOCO_KEY_URL"
 # afterwards, give the user an interactive shell
 exec /bin/bash

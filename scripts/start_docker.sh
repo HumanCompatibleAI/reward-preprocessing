@@ -8,7 +8,7 @@
 # quit on errors, forbid undefined variables
 set -euo pipefail
 
-sudo docker run \
+docker run \
     --rm -it \
     --env MUJOCO_KEY_URL="$MUJOCO_KEY_URL" \
     --mount type=bind,src="$REWARD_PREPROCESSING_DIR",target=/reward_preprocessing \
