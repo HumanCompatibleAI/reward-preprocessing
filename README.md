@@ -26,9 +26,31 @@ instead of the installation procedure described above. However, note that the
 Mujoco key file in `/root/.mujoco/mjkey.txt` is empty in the image, you will need
 to enter a valid license key there.
 
+If you use the `latest` tag of the image, you will get an image that already
+includes and is ready to go (except for the Mujoco key). You can also mount
+the code into the Docker image from your local disk (e.g. for development purposes).
+In that case, we suggest you use `scripts/start_docker.sh`. More specifically:
+- Set the `MUJOCO_KEY_URL` environment variable to a URL that returns a Mujoco key
+  when accessed
+- Set the `REWARD_PREPROCESSING_DIR` environment variable to the path to this
+  repository on your machine
+- Make sure you've pulled the `dependencies` tag of the Docker image
+- If you have Docker set up such that it requires root privileges,
+  you'll need to turn `docker run` in `scripts/start_docker.sh` into `sudo docker run`
+- Now run `scrips/start_docker.sh`. This will create and start a Docker
+  container and set up a few things (such as the Mujoco key). You then get
+  an interactive shell inside the Docker container. This repository will be
+  mounted to `/reward_preprocessing` inside the container.
+  
+Note: you musn't have a `.venv/` virtual environment inside this repository
+if you want to mount it into the container this way. `pipenv` gets confused
+otherwise. By default, `pipenv` creates virtual environments in a separate
+location anyway, so if you followed our suggested setup above (or didn't create
+a virtual environment on the host machine at all), you should be fine.
+
 `ci/docker.sh` is a helper script to build the Docker image, test it, and then
 push it to DockerHub. You will need to set the `MUJOCO_KEY_URL` environment variable
-to a URL that returns a valid Mujoco key when accessed, e.g.
+again, e.g.:
 ```
 MUJOCO_KEY_URL="https://..." ci/docker.sh
 ```
