@@ -7,7 +7,7 @@ states to floats. PotentialShaping is the most general case,
 while the other classes in this module are helper classes
 that use a particular type of potential.
 """
-from typing import Callable
+from typing import Callable, Optional
 
 import gym
 import matplotlib.pyplot as plt
@@ -170,7 +170,12 @@ class MlpPotentialShaping(PytorchPotentialShaping):
     ):
         in_size = np.product(model.state_shape)
         layers = [nn.Flatten(), nn.Linear(in_size, hidden_size), nn.ReLU()]
-        for _ in range(num_hidden):
+        if num_hidden < 1:
+            raise ValueError(
+                "MLP must have at least one hidden layer. "
+                "Did you mean to use LinearPotentialShaping instead?"
+            )
+        for _ in range(num_hidden - 1):
             layers.append(nn.Linear(hidden_size, hidden_size))
             layers.append(nn.ReLU())
         layers.append(nn.Linear(hidden_size, 1))
@@ -221,7 +226,7 @@ DEFAULT_POTENTIALS = {
 
 
 def instantiate_potential(
-    env_name: str = None, potential_name: str = None, **kwargs
+    env_name: Optional[str] = None, potential_name: Optional[str] = None, **kwargs
 ) -> PotentialShaping:
     """Create the right PotentialShaping instance for a given environment.
 
