@@ -5,3 +5,5 @@ __pycache__/
 *.egg-info
 /runs
 /results
+/build
+/dist

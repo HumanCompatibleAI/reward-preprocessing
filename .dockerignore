@@ -5,3 +5,7 @@ __pycache__/
 *.egg-info
 .git
 Dockerfile
+/runs
+/results
+/build
+/dist
