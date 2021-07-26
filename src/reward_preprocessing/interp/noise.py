@@ -1,3 +1,5 @@
+from typing import Any, Mapping
+
 from sacred import Ingredient
 
 from reward_preprocessing.env import create_env, env_ingredient
@@ -14,6 +16,7 @@ def config():
     std = 1.0
     mean = 0.0
     potential = None
+    potential_options = {}
 
     _ = locals()  # make flake8 happy
     del _
@@ -27,6 +30,7 @@ def add_noise_potential(
     std: float,
     mean: float,
     potential: str,
+    potential_options: Mapping[str, Any],
     _run,
 ) -> RewardModel:
     if not enabled:
@@ -35,7 +39,9 @@ def add_noise_potential(
     env = create_env()
 
     env_name = get_env_name(env)
-    wrapped_model = instantiate_potential(env_name, potential, model=model, gamma=gamma)
+    wrapped_model = instantiate_potential(
+        env_name, potential, model=model, gamma=gamma, **potential_options
+    )
     try:
         wrapped_model.random_init(std=std, mean=mean)
     except NotImplementedError:
