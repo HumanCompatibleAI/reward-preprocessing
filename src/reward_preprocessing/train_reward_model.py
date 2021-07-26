@@ -94,13 +94,13 @@ def main(
             loss.backward()
             optimizer.step()
 
-        test_loss = torch.tensor(0.0)
+        test_loss = torch.tensor(0.0, device=device)
         with torch.no_grad():
             i = 0
             for inputs, rewards in test_loader:
                 i += 1
                 test_loss += loss_fn(model(inputs.to(device)), rewards.to(device))
-        print("Epoch {:3d} | Test Loss: {:.6f}".format(e, float(test_loss) / i))
+        print("Epoch {:3d} | Test Loss: {:.6f}".format(e, test_loss.item() / i))
 
     # if save_path is set, we don't actually need the temporary directory
     # but just always creating it makes the code simpler
