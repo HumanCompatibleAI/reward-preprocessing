@@ -120,7 +120,9 @@ class PytorchPotentialShaping(PotentialShaping):
         # (and that the module expects input to be on that device).
         # But I think that's always going to be the case for us,
         # and this is less hassle than passing around device arguments all the time
-        device = next(self.potential.parameters()).device
+        device = next(
+            self.potential.parameters()  # pytype: disable=attribute-error
+        ).device
         out = (
             self.potential(torch.as_tensor(values, device=device))
             .detach()
