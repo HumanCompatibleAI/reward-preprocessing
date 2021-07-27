@@ -1,10 +1,12 @@
 from pathlib import Path
+import sys
 import tempfile
 from typing import Any, Mapping
 
 from sacred import Experiment
 from stable_baselines3 import PPO
 from stable_baselines3.common.evaluation import evaluate_policy
+from stable_baselines3.common.logger import HumanOutputFormat, Logger
 from stable_baselines3.common.vec_env.vec_normalize import VecNormalize
 from torch import nn
 
@@ -14,6 +16,7 @@ from reward_preprocessing.utils import (
     add_observers,
     get_env_name,
 )
+from reward_preprocessing.wandb_logger import WandbOutputFormat
 
 ex = Experiment("train_agent", ingredients=[env_ingredient])
 add_observers(ex)
@@ -32,6 +35,7 @@ def config():
     run_dir = "runs/agent"
     eval_episodes = 0
     ppo_options = {}
+    wb = {}
 
     _ = locals()  # make flake8 happy
     del _
@@ -68,6 +72,8 @@ def main(
     num_frames: int,
     eval_episodes: int,
     ppo_options: Mapping[str, Any],
+    wb: Mapping[str, Any],
+    _config,
 ):
     env = create_env()
     env_name = get_env_name(env)
@@ -77,6 +83,13 @@ def main(
         ppo_options = {**DEFAULT_PPO_OPTIONS[env_name], **ppo_options}
 
     model = PPO("MlpPolicy", env, verbose=1, **ppo_options)
+    # If any weights & biases options are set, we use that for logging.
+    if wb:
+        writer = WandbOutputFormat(wb)
+        logger = Logger(
+            folder=None, output_formats=[writer, HumanOutputFormat(sys.stdout)]
+        )
+        model.set_logger(logger)
     model.learn(total_timesteps=steps)
 
     if eval_episodes:
