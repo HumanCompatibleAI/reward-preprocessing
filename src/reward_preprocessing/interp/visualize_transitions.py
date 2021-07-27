@@ -40,6 +40,7 @@ def config():
 def visualize_transitions(
     model: RewardModel,
     env: gym.Env,
+    device,
     num: int,
     num_samples: int,
     enabled: bool,
@@ -65,7 +66,7 @@ def visualize_transitions(
         # an array (such as the state) and if it's a scalar (such as done)
         transition = transition.apply(lambda x: np.array([x]))
         transition = transition.apply(torch.from_numpy)
-        transition = transition.apply(lambda x: x.float())
+        transition = transition.apply(lambda x: x.float().to(device))
         predicted_reward = model(transition).item()
 
         next_img = env.render(mode="rgb_array")

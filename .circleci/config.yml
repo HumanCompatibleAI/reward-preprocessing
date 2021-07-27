@@ -18,6 +18,10 @@ commands:
     steps:
       - checkout  # Check out the code from Git
       - run:
+          name: download Mujoco key
+          # $MUJOCO_KEY is set via CircleCI and contains a URL pointing to a key
+          command: curl -o /root/.mujoco/mjkey.txt ${MUJOCO_KEY}
+      - run:
           name: install reward_preprocessing
           # Build a wheel then install to avoid copying whole directory (pip issue #2195)
           command: |
@@ -51,5 +55,9 @@ jobs:
 workflows:
   main:
     jobs:
-      - lint
-      - test
+      - lint:
+          context:
+          - MuJoCo
+      - test:
+          context:
+          - MuJoCo

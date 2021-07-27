@@ -149,8 +149,8 @@ def get_agent_positions(obs: torch.Tensor) -> torch.Tensor:
     # one goal. But doing that in vectorized form seems tricky.
 
     # these will contain the x and y agent positions for all the observations
-    x = torch.empty(batch_size, dtype=torch.long)
-    y = torch.empty(batch_size, dtype=torch.long)
+    x = torch.empty(batch_size, dtype=torch.long, device=obs.device)
+    y = torch.empty(batch_size, dtype=torch.long, device=obs.device)
 
     # If the agent reaches the goal, the agent vanishes.
     # So we first fill out the position using the goal

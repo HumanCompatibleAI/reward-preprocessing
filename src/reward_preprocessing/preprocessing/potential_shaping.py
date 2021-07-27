@@ -85,6 +85,23 @@ class PotentialShaping(Preprocessor):
         Returns:
             plt.Figure: a plot of the potential
         """
+        raise NotImplementedError(
+            "Potential plotting is not implemented for this type of potential."
+        )
+
+
+class PytorchPotentialShaping(PotentialShaping):
+    """A potential shaping where the potential is a torch.nn.Module."""
+
+    def __init__(
+        self,
+        model: RewardModel,
+        potential: nn.Module,
+        gamma: float,
+    ):
+        super().__init__(model, potential, gamma)
+
+    def plot(self, env: gym.Env) -> plt.Figure:
         space = env.observation_space
         if not isinstance(space, gym.spaces.Box) or space.shape != (2,):
             # we don't know how to handle state spaces that aren't 2D in general
@@ -98,7 +115,21 @@ class PotentialShaping(Preprocessor):
         ys = np.linspace(space.low[1], space.high[1], grid_size, dtype=np.float32)
         xx, yy = np.meshgrid(xs, ys)
         values = np.stack([xx, yy], axis=2).reshape(-1, 2)
-        out = self.potential(torch.as_tensor(values)).detach().numpy()
+
+        # HACK: This assumes that all parameters are on the same device
+        # (and that the module expects input to be on that device).
+        # But I think that's always going to be the case for us,
+        # and this is less hassle than passing around device arguments all the time
+        device = next(
+            self.potential.parameters()  # pytype: disable=attribute-error
+        ).device
+        out = (
+            self.potential(torch.as_tensor(values, device=device))
+            .detach()
+            .cpu()
+            .numpy()
+        )
+
         out = out.reshape(grid_size, grid_size)
         fig, ax = plt.subplots()
         im = ax.imshow(out)
@@ -106,8 +137,13 @@ class PotentialShaping(Preprocessor):
         fig.colorbar(im, ax=ax)
         return fig
 
+    def random_init(self, mean: float = 0, std: float = 1) -> None:
+        for param in self.potential.parameters():  # pytype: disable=attribute-error
+            nn.init.normal_(param, mean=mean, std=std)
+            param.requires_grad = False
 
-class LinearPotentialShaping(PotentialShaping):
+
+class LinearPotentialShaping(PytorchPotentialShaping):
     """A potential shaping preprocessor with a learned linear potential."""
 
     def __init__(self, model: RewardModel, gamma: float):
@@ -115,13 +151,8 @@ class LinearPotentialShaping(PotentialShaping):
         potential = nn.Sequential(nn.Flatten(), nn.Linear(in_size, 1))
         super().__init__(model, potential, gamma)
 
-    def random_init(self, mean: float = 0, std: float = 1) -> None:
-        for param in self.potential.parameters():  # pytype: disable=attribute-error
-            nn.init.normal_(param, mean=mean, std=std)
-            param.requires_grad = False
 
-
-class MlpPotentialShaping(PotentialShaping):
+class MlpPotentialShaping(PytorchPotentialShaping):
     """A potential shaping preprocessor with a learned MLP potential.
     Uses ReLU activation functions.
 
@@ -153,11 +184,6 @@ class MlpPotentialShaping(PotentialShaping):
 
         potential = nn.Sequential(*layers)
         super().__init__(model, potential, gamma)
-
-    def random_init(self, mean: float = 0, std: float = 1) -> None:
-        for param in self.potential.parameters():  # pytype: disable=attribute-error
-            nn.init.normal_(param, mean=mean, std=std)
-            param.requires_grad = False
 
 
 class MazelabPotentialShaping(PotentialShaping):
@@ -198,6 +224,7 @@ class MazelabPotentialShaping(PotentialShaping):
 DEFAULT_POTENTIALS = {
     "EmptyMaze-v0": "MazelabPotentialShaping",
     "MountainCar-v0": "LinearPotentialShaping",
+    "HalfCheetah-v2": "LinearPotentialShaping",
 }
 
 

@@ -33,6 +33,7 @@ def config():
 @sparsify_ingredient.capture
 def sparsify(
     model: RewardModel,
+    device,
     gamma: float,
     enabled: bool,
     steps: int,
@@ -51,11 +52,6 @@ def sparsify(
         return model
 
     env = create_env()
-
-    if torch.cuda.is_available():
-        device = torch.device("cuda")
-    else:
-        device = torch.device("cpu")
 
     if rollouts == "random":
         agent = None
@@ -81,7 +77,7 @@ def sparsify(
     env_name = get_env_name(env)
     model = instantiate_potential(
         env_name, potential, model=model, gamma=gamma, **potential_options
-    )
+    ).to(device)
 
     train_loader, _ = get_data_loaders(
         batch_size=batch_size,

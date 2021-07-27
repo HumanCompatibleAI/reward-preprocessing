@@ -7,13 +7,55 @@ If you haven't installed it yet, you can use for example
 ```
 pip install --user pipenv
 ```
-Then you can reproduce the exact environment we use with
+You will also need Mujoco. `mujoco_py` is installed as part of our
+environment (see below) but its
+[installation and troubleshooting instructions](https://github.com/openai/mujoco-py)
+might still be helpful.
+Once Mujoco is installed and has a license key,
+you can reproduce the exact environment we use with
 ```
 ci/setup.sh
 ```
 (run this command inside the cloned repo). This will automatically create a new
 virtual environment.
 Use `pipenv shell` to start a shell inside this virtual environment.
+
+## Docker
+You can also use our [Docker image](https://hub.docker.com/repository/docker/ejenner/reward_preprocessing)
+instead of the installation procedure described above. However, note that the
+Mujoco key file in `/root/.mujoco/mjkey.txt` is empty in the image, you will need
+to enter a valid license key there.
+
+If you use the `latest` tag of the image, you will get an image that already
+includes the code and is ready to go (except for the Mujoco key). You can also mount
+the code into the Docker image from your local disk instead (e.g. for development purposes).
+In that case, we suggest you use `scripts/start_docker.sh`. More specifically:
+- Set the `MUJOCO_KEY_URL` environment variable to a URL that returns a Mujoco key
+  when accessed
+- Set the `REWARD_PREPROCESSING_DIR` environment variable to the path to this
+  repository on your machine
+- Make sure you've pulled the `dependencies` tag of the Docker image
+- If you have Docker set up such that it requires root privileges,
+  you'll need to turn `docker run` in `scripts/start_docker.sh` into `sudo docker run`
+- Now run `scrips/start_docker.sh`. This will create and start a Docker
+  container and set up a few things (such as the Mujoco key). You then get
+  an interactive shell inside the Docker container. This repository will be
+  mounted to `/reward_preprocessing` inside the container.
+  
+Note: you musn't have a `.venv/` virtual environment inside this repository
+if you want to mount it into the container this way. `pipenv` gets confused
+otherwise. By default, `pipenv` creates virtual environments in a separate
+location anyway, so if you followed our suggested setup above (or didn't create
+a virtual environment on the host machine at all), you should be fine.
+
+`ci/docker.sh` is a helper script to build the Docker image, test it, and then
+push it to DockerHub. You will need to set the `MUJOCO_KEY_URL` environment variable
+again, e.g.:
+```
+MUJOCO_KEY_URL="https://..." ci/docker.sh
+```
+(the URL isn't needed to build the Docker image, but it's needed to test whether
+Mujoco was installed correctly in the image).
 
 ## Running experiments
 You can train an agent using

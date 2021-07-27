@@ -25,6 +25,7 @@ def config():
 def visualize_rollout(
     model: RewardModel,
     env: gym.Env,
+    device,
     plot_shape: Tuple[int, int],
     enabled: bool,
     _run,
@@ -47,7 +48,7 @@ def visualize_rollout(
         # an array (such as the state) and if it's a scalar (such as done)
         transition = transition.apply(lambda x: np.array([x]))
         transition = transition.apply(torch.from_numpy)
-        transition = transition.apply(lambda x: x.float())
+        transition = transition.apply(lambda x: x.float().to(device))
         predicted_reward = model(transition).item()
 
         ax[i].imshow(env.render(mode="rgb_array"))
