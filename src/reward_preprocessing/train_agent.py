@@ -39,6 +39,8 @@ def config():
 
 DEFAULT_PPO_OPTIONS = {
     "MountainCar-v0": {"n_steps": 256, "gae_lambda": 0.98, "n_epochs": 4},
+    # Converted from
+    # https://github.com/DLR-RM/rl-trained-agents/blob/28bc94a4a39a7845bb9541796af2fb077a47673d/ppo/HalfCheetahBulletEnv-v0_1/HalfCheetahBulletEnv-v0/config.yml
     "HalfCheetah-v2": {
         "batch_size": 128,
         "clip_range": 0.4,
