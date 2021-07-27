@@ -5,6 +5,7 @@ from typing import Any, Mapping
 from sacred import Experiment
 from stable_baselines3 import PPO
 from stable_baselines3.common.evaluation import evaluate_policy
+from torch import nn
 
 from reward_preprocessing.env import create_env, env_ingredient
 from reward_preprocessing.utils import (
@@ -37,6 +38,23 @@ def config():
 
 DEFAULT_PPO_OPTIONS = {
     "MountainCar-v0": {"n_steps": 256, "gae_lambda": 0.98, "n_epochs": 4},
+    "HalfCheetah-v2": {
+        "batch_size": 128,
+        "clip_range": 0.4,
+        "gamma": 0.99,
+        "learning_rate": 3e-5,
+        "n_steps": 512,
+        "gae_lambda": 0.9,
+        "n_epochs": 20,
+        "use_sde": True,
+        "sde_sample_freq": 4,
+        "policy_kwargs": {
+            "log_std_init": -2,
+            "ortho_init": False,
+            "activation_fn": nn.ReLU,
+            "net_arch": [{"pi": [256, 256], "vf": [256, 256]}],
+        },
+    },
 }
 
 
