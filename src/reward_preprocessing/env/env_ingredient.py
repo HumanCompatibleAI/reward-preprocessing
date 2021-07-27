@@ -1,4 +1,4 @@
-from typing import Any, Iterable, Mapping
+from typing import Any, Iterable, Mapping, Optional
 
 import gym
 from sacred import Ingredient
@@ -69,9 +69,9 @@ def create_env(
     name: str,
     _seed: int,
     options: Mapping[str, Any] = {},
-    stats_path: str = None,
+    stats_path: Optional[str] = None,
     n_envs: int = 1,
-    normalize: bool = False,
+    normalize: Optional[bool] = False,
     wrappers: Iterable[str] = [],
 ):
     env = DummyVecEnv([lambda: wrap_env(gym.make(name, **options), wrappers)] * n_envs)
