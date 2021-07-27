@@ -1,7 +1,6 @@
 from typing import Any, Dict, Mapping, Tuple, Union
 
 from stable_baselines3.common.logger import KVWriter
-
 import wandb
 
 
