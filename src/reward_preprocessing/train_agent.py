@@ -5,6 +5,7 @@ from typing import Any, Mapping
 from sacred import Experiment
 from stable_baselines3 import PPO
 from stable_baselines3.common.evaluation import evaluate_policy
+from stable_baselines3.common.vec_env.vec_normalize import VecNormalize
 from torch import nn
 
 from reward_preprocessing.env import create_env, env_ingredient
@@ -92,6 +93,13 @@ def main(
             model_path = Path(save_path)
         model.save(model_path)
         ex.add_artifact(model_path.with_suffix(".zip"))
+
+        if isinstance(env, VecNormalize):
+            # if we used normalization, then store the final statistics
+            # so we can reuse them later
+            stats_path = path / "vec_normalize.pkl"
+            env.save(str(stats_path))
+            ex.add_artifact(stats_path)
 
         # record a video of the trained agent
         env = ContinuousVideoRecorder(
