@@ -68,11 +68,11 @@ def wrap_env(env: gym.Env, wrappers: Iterable[str]) -> gym.Env:
 def create_env(
     name: str,
     _seed: int,
-    options: Mapping[str, Any],
-    stats_path: str,
-    n_envs: int,
-    normalize: bool,
-    wrappers: Iterable[str],
+    options: Mapping[str, Any] = {},
+    stats_path: str = None,
+    n_envs: int = 1,
+    normalize: bool = False,
+    wrappers: Iterable[str] = [],
 ):
     env = DummyVecEnv([lambda: wrap_env(gym.make(name, **options), wrappers)] * n_envs)
     env.seed(_seed)
