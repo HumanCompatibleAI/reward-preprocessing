@@ -85,7 +85,7 @@ def main(
     model = PPO("MlpPolicy", env, verbose=1, **ppo_options)
     # If any weights & biases options are set, we use that for logging.
     if wb:
-        writer = WandbOutputFormat(wb)
+        writer = WandbOutputFormat(wb, _config)
         logger = Logger(
             folder=None, output_formats=[writer, HumanOutputFormat(sys.stdout)]
         )
