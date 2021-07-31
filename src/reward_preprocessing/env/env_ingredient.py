@@ -41,8 +41,9 @@ def mountain_car():
 
 @env_ingredient.named_config
 def half_cheetah():
-    name = "HalfCheetah-v2"
+    name = "HalfCheetah-v3"
     wrappers = ["sb3_contrib.common.wrappers.TimeFeatureWrapper"]
+    options = {"exclude_current_positions_from_observation": False}
     n_envs = 16
     normalize = True
     _ = locals()  # make flake8 happy

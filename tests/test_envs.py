@@ -22,7 +22,7 @@ def test_empty_maze():
 
 
 def test_mujoco():
-    env = gym.make("HalfCheetah-v2")
+    env = gym.make("HalfCheetah-v3")
 
     obs = env.reset()
     for _ in range(10):
