@@ -5,6 +5,7 @@ from typing import Any, Mapping
 
 from sacred import Experiment
 from stable_baselines3 import PPO
+from stable_baselines3.common.callbacks import EvalCallback
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.logger import HumanOutputFormat, Logger
 from stable_baselines3.common.vec_env.vec_normalize import VecNormalize
@@ -36,6 +37,7 @@ def config():
     eval_episodes = 0
     ppo_options = {}
     wb = {}
+    eval_every = 10000
 
     _ = locals()  # make flake8 happy
     del _
@@ -73,6 +75,7 @@ def main(
     eval_episodes: int,
     ppo_options: Mapping[str, Any],
     wb: Mapping[str, Any],
+    eval_every: int,
     _config,
 ):
     env = create_env()
@@ -83,6 +86,12 @@ def main(
         ppo_options = {**DEFAULT_PPO_OPTIONS[env_name], **ppo_options}
 
     model = PPO("MlpPolicy", env, verbose=1, **ppo_options)
+    eval_callback = EvalCallback(
+        create_env(),
+        eval_freq=eval_every,
+        deterministic=True,
+        render=False,
+    )
     # If any weights & biases options are set, we use that for logging.
     if wb:
         writer = WandbOutputFormat(wb, _config)
@@ -90,7 +99,7 @@ def main(
             folder=None, output_formats=[writer, HumanOutputFormat(sys.stdout)]
         )
         model.set_logger(logger)
-    model.learn(total_timesteps=steps)
+    model.learn(total_timesteps=steps, callback=eval_callback)
 
     if eval_episodes:
         mean_reward, std_reward = evaluate_policy(
