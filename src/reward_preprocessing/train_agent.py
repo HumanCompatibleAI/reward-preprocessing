@@ -37,7 +37,7 @@ def config():
     eval_episodes = 0
     ppo_options = {}
     wb = {}
-    eval_every = 10000
+    eval_every = 10000  # eval every n steps. Set to 0 to disable.
 
     _ = locals()  # make flake8 happy
     del _
@@ -86,12 +86,16 @@ def main(
         ppo_options = {**DEFAULT_PPO_OPTIONS[env_name], **ppo_options}
 
     model = PPO("MlpPolicy", env, verbose=1, **ppo_options)
-    eval_callback = EvalCallback(
-        create_env(),
-        eval_freq=eval_every,
-        deterministic=True,
-        render=False,
-    )
+
+    eval_callback = None
+    if eval_every > 0:
+        eval_callback = EvalCallback(
+            create_env(),
+            eval_freq=eval_every,
+            deterministic=True,
+            render=False,
+        )
+
     # If any weights & biases options are set, we use that for logging.
     if wb:
         writer = WandbOutputFormat(wb, _config)
