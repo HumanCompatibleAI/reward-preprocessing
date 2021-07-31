@@ -74,6 +74,11 @@ def create_env(
     normalize: Optional[bool] = False,
     wrappers: Iterable[str] = [],
 ):
+    # always wrap in a Monitor wrapper, which collects the returns and
+    # episode lengths so that the original ones are available if they
+    # are modified by other wrappers. This also enables automatic logging
+    # of returns.
+    wrappers = ["stable_baselines3.common.monitor.Monitor"] + list(wrappers)
     env = DummyVecEnv([lambda: wrap_env(gym.make(name, **options), wrappers)] * n_envs)
     env.seed(_seed)
     # the action space uses a distinct random seed from the environment
