@@ -8,7 +8,7 @@ from tqdm import tqdm
 import wandb
 
 from reward_preprocessing.env import create_env, env_ingredient
-from reward_preprocessing.models import MlpRewardModel
+from reward_preprocessing.models import MlpRewardModel, SasRewardModel
 from reward_preprocessing.utils import add_observers, use_rollouts
 
 ex = Experiment("train_reward_model", ingredients=[env_ingredient])
@@ -28,6 +28,7 @@ def config():
     # without an extension (but including a filename).
     save_path = None
     run_dir = "runs/reward_model"
+    model_type = "ss"
     wb = {}
     eval_every = 5  # compute test loss every n episodes
     log_every = 20  # how many batches to aggregate before logging to wandb
@@ -40,6 +41,7 @@ def config():
 def main(
     epochs: int,
     save_path: str,
+    model_type: str,
     wb: Mapping[str, Any],
     log_every: int,
     eval_every: int,
@@ -52,7 +54,14 @@ def main(
     else:
         device = torch.device("cpu")
 
-    model = MlpRewardModel(train_loader.dataset.state_shape).to(device)
+    if model_type == "ss":
+        model = MlpRewardModel(train_loader.dataset.state_shape).to(device)
+    elif model_type == "sas":
+        model = SasRewardModel(
+            train_loader.dataset.state_shape, train_loader.dataset.action_shape
+        ).to(device)
+    else:
+        raise ValueError(f"Unknown model type '{model_type}', expected 'ss' or 'sas'.")
     optimizer = torch.optim.Adam(model.parameters())
     loss_fn = torch.nn.MSELoss()
 
