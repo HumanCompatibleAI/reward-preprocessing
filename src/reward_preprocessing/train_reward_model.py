@@ -29,6 +29,9 @@ def config():
     save_path = None
     run_dir = "runs/reward_model"
     model_type = "ss"
+    lr = 0.001
+    lr_decay_rate = None
+    lr_decay_every = 100  # decay learning rate every n batches (if decay rate is set)
     wb = {}
     eval_every = 5  # compute test loss every n episodes
     log_every = 20  # how many batches to aggregate before logging to wandb
@@ -42,6 +45,9 @@ def main(
     epochs: int,
     save_path: str,
     model_type: str,
+    lr: float,
+    lr_decay_rate: float,
+    lr_decay_every: int,
     wb: Mapping[str, Any],
     log_every: int,
     eval_every: int,
@@ -62,7 +68,12 @@ def main(
         ).to(device)
     else:
         raise ValueError(f"Unknown model type '{model_type}', expected 'ss' or 'sas'.")
-    optimizer = torch.optim.Adam(model.parameters())
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    scheduler = None
+    if lr_decay_rate is not None:
+        scheduler = torch.optim.lr_scheduler.ExponentialLR(
+            optimizer, gamma=lr_decay_rate
+        )
     loss_fn = torch.nn.MSELoss()
 
     # this is what we'll return if no epochs are run
@@ -87,6 +98,13 @@ def main(
             optimizer.step()
             step += 1
             running_loss += loss.item()
+            if scheduler and step % lr_decay_every == 0:
+                scheduler.step()
+                print(f"LR: {scheduler.get_last_lr()[0]:.2E}")
+                if wb:
+                    wandb.log(
+                        {"lr": scheduler.get_last_lr(), "epoch": e + 1}, step=step
+                    )
             if step % log_every == 0 and wb:
                 wandb.log(
                     {"loss/train": running_loss / log_every, "epoch": e + 1}, step=step
