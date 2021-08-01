@@ -58,7 +58,7 @@ def main(model_path: str, agent_path: str, gamma: float):
     model = MlpRewardModel(env.observation_space.shape).to(device)
     model.load_state_dict(torch.load(model_path))
     model = add_noise_potential(model, gamma)
-    model = sparsify(model, device=device, gamma=gamma, agent=agent)
+    model = sparsify(model, device=device, gamma=gamma)
     model.eval()
     visualize_transitions(model, env, device=device, agent=agent)
     visualize_rollout(model, env, device=device, agent=agent)

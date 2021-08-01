@@ -1,12 +1,17 @@
 import importlib
 from pathlib import Path
 import tempfile
-from typing import Callable, List
+from typing import Callable, List, Tuple
 
 import matplotlib.pyplot as plt
 import sacred
 from stable_baselines3.common.vec_env import VecVideoRecorder
 from stable_baselines3.common.vec_env.base_vec_env import VecEnv, VecEnvObs
+import torch
+
+from reward_preprocessing.datasets import RolloutConfig, get_data_loaders, to_torch
+
+EnvFactory = Callable[[], VecEnv]
 
 
 class ContinuousVideoRecorder(VecVideoRecorder):
@@ -45,6 +50,67 @@ def add_observers(ex: sacred.Experiment) -> None:
             ex.observers.append(sacred.observers.FileStorageObserver(config["run_dir"]))
 
     ex.config_hook(helper)
+
+
+def use_rollouts(
+    ing: sacred.Ingredient,
+) -> Callable[
+    [EnvFactory], Tuple[torch.utils.data.DataLoader, torch.utils.data.DataLoader]
+]:
+    """Add a config scope to a Sacred Experiment which will add configs
+    needed for using rollouts.
+
+    Returns a capture function that only needs to be passed a venv factory
+    function and returns train and test dataloaders.
+    """
+
+    def config():
+        data_path = None
+        rollouts = None  # each element should be a RolloutConfig instance
+        num_workers = 0
+        steps = 10000
+        test_steps = 5000
+        batch_size = 32
+
+        _ = locals()  # make flake8 happy
+        del _
+
+    ing.config(config)
+
+    def random_rollouts():
+        rollouts = [RolloutConfig(random_prob=1)]
+        _ = locals()  # make flake8 happy
+        del _
+
+    ing.named_config(random_rollouts)
+
+    def _get_data_loaders(
+        env,
+        batch_size,
+        num_workers,
+        _seed,
+        data_path,
+        rollouts,
+        steps,
+        test_steps,
+    ):
+        # turn the rollout configs from ReadOnlyLists into RolloutConfigs
+        # (Sacred turns the namedtuples into lists)
+        if rollouts is not None:
+            rollouts = [RolloutConfig(*x) for x in rollouts]
+        return get_data_loaders(
+            batch_size,
+            num_workers,
+            _seed,
+            data_path,
+            env,
+            rollouts,
+            steps,
+            test_steps,
+            transform=to_torch,
+        )
+
+    return ing.capture(_get_data_loaders)
 
 
 def sacred_save_fig(fig: plt.Figure, run, filename: str) -> None:
