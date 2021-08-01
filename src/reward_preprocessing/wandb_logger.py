@@ -6,7 +6,12 @@ import wandb
 
 class WandbOutputFormat(KVWriter):
     def __init__(self, wb_options: Mapping[str, Any], config: Mapping[str, Any]):
-        wandb.init(project="reward_preprocessing", config=config, **wb_options)
+        wandb.init(
+            project="reward_preprocessing",
+            job_type="agent",
+            config=config,
+            **wb_options,
+        )
 
     def write(
         self,

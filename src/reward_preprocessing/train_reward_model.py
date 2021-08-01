@@ -1,9 +1,11 @@
 from pathlib import Path
 import tempfile
+from typing import Any, Mapping
 
 from sacred import Experiment
 import torch
 from tqdm import tqdm
+import wandb
 
 from reward_preprocessing.env import create_env, env_ingredient
 from reward_preprocessing.models import MlpRewardModel
@@ -26,13 +28,23 @@ def config():
     # without an extension (but including a filename).
     save_path = None
     run_dir = "runs/reward_model"
+    wb = {}
+    eval_every = 5  # compute test loss every n episodes
+    log_every = 20  # how many batches to aggregate before logging to wandb
 
     _ = locals()  # make flake8 happy
     del _
 
 
 @ex.automain
-def main(epochs: int, save_path: str):
+def main(
+    epochs: int,
+    save_path: str,
+    wb: Mapping[str, Any],
+    log_every: int,
+    eval_every: int,
+    _config,
+):
     train_loader, test_loader = get_data_loaders(create_env)
 
     if torch.cuda.is_available():
@@ -48,20 +60,42 @@ def main(epochs: int, save_path: str):
     # (mainly here to make pylance happy, shouldn't actually be needed)
     test_loss = None
 
+    if wb:
+        wandb.init(
+            project="reward_preprocessing",
+            job_type="reward_model",
+            config=_config,
+            **wb,
+        )
+
+    step = 0
+    running_loss = 0.0
     for e in range(epochs):
         for inputs, rewards in tqdm(train_loader):
             optimizer.zero_grad()
             loss = loss_fn(model(inputs.to(device)), rewards.to(device))
             loss.backward()
             optimizer.step()
+            step += 1
+            running_loss += loss.item()
+            if step % log_every == 0 and wb:
+                wandb.log(
+                    {"loss/train": running_loss / log_every, "epoch": e + 1}, step=step
+                )
+                running_loss = 0.0
 
-        test_loss = torch.tensor(0.0, device=device)
-        with torch.no_grad():
-            i = 0
-            for inputs, rewards in test_loader:
-                i += 1
-                test_loss += loss_fn(model(inputs.to(device)), rewards.to(device))
-        print("Epoch {:3d} | Test Loss: {:.6f}".format(e, test_loss.item() / i))
+        if (e + 1) % eval_every == 0:
+            test_loss = torch.tensor(0.0, device=device)
+            with torch.no_grad():
+                i = 0
+                for inputs, rewards in test_loader:
+                    i += 1
+                    test_loss += loss_fn(model(inputs.to(device)), rewards.to(device))
+            print("Epoch {:3d} | Test Loss: {:.6f}".format(e, test_loss.item() / i))
+            if wb:
+                wandb.log(
+                    {"loss/test": test_loss.item() / i, "epoch": e + 1}, step=step
+                )
 
     # if save_path is set, we don't actually need the temporary directory
     # but just always creating it makes the code simpler
