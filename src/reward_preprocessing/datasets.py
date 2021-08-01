@@ -182,7 +182,7 @@ class DynamicRewardData(torch.utils.data.IterableDataset):
         # itself, which is important if we use randomly sampled actions
         self.venv.action_space.np_random.seed(seed)
         if isinstance(self.policy, (BasePolicy, BaseAlgorithm)):
-            self.policy.set_random_seed(seed)
+            self.policy.set_random_seed(seed)  # type: ignore
 
     def __iter__(self):
         for out in get_transitions(
