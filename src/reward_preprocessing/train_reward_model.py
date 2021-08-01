@@ -84,7 +84,8 @@ def main(
                 )
                 running_loss = 0.0
 
-        if (e + 1) % eval_every == 0:
+        # eval every eval_every epochs, but also after the final epoch
+        if (e + 1) % eval_every == 0 or e == epochs - 1:
             test_loss = torch.tensor(0.0, device=device)
             with torch.no_grad():
                 i = 0
