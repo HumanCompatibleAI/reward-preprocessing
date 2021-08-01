@@ -36,13 +36,15 @@ def policy_to_callable(
         def get_actions(states):
             acts = []
             for _ in range(len(states)):
-                acts.append(policy.action_space.sample())
+                acts.append(policy.action_space.sample())  # type: ignore
             return np.stack(acts, axis=0)
 
     elif isinstance(policy, (BaseAlgorithm, BasePolicy)):
 
         def get_actions(states):
-            acts, _ = policy.predict(states, deterministic=deterministic_policy)
+            acts, _ = policy.predict(  # type: ignore
+                states, deterministic=deterministic_policy
+            )
             return acts
 
     elif isinstance(policy, Callable):
