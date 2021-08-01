@@ -69,7 +69,7 @@ def test_reward_training_deterministic_with_agent(env, agent_path, tmp_path):
             "run_dir": str(tmp_path),
             "batch_size": 2,
             "steps": 10,
-            "agent_path": str(agent_path),
+            "rollouts": [(0, str(agent_path))],
             "env.name": get_env_name(env),
         }
     )
@@ -80,7 +80,7 @@ def test_reward_training_deterministic_with_agent(env, agent_path, tmp_path):
             "run_dir": str(tmp_path),
             "batch_size": 2,
             "steps": 10,
-            "agent_path": str(agent_path),
+            "rollouts": [(0, str(agent_path))],
             "env.name": get_env_name(env),
         }
     )
@@ -100,7 +100,8 @@ def test_reward_training_deterministic_no_agent(env, tmp_path):
             "batch_size": 2,
             "steps": 10,
             "env.name": get_env_name(env),
-        }
+        },
+        named_configs=["random_rollouts"],
     )
 
     r2 = train_reward_model_ex.run(
@@ -110,7 +111,8 @@ def test_reward_training_deterministic_no_agent(env, tmp_path):
             "batch_size": 2,
             "steps": 10,
             "env.name": get_env_name(env),
-        }
+        },
+        named_configs=["random_rollouts"],
     )
 
     # just a sanity check to ensure we actually evaluated
@@ -120,7 +122,7 @@ def test_reward_training_deterministic_no_agent(env, tmp_path):
 
 
 @pytest.mark.expensive
-def test_reward_training_different_seeds(env, data_path, tmp_path):
+def test_reward_training_different_seeds(env, tmp_path):
     """A sanity check: with different seeds, the results should be different.
     Otherwise, the determinism test apparently doesn't work.
     """
@@ -131,7 +133,8 @@ def test_reward_training_different_seeds(env, data_path, tmp_path):
             "batch_size": 2,
             "steps": 10,
             "env.name": get_env_name(env),
-        }
+        },
+        named_configs=["random_rollouts"],
     )
 
     r2 = train_reward_model_ex.run(
@@ -141,7 +144,8 @@ def test_reward_training_different_seeds(env, data_path, tmp_path):
             "batch_size": 2,
             "steps": 10,
             "env.name": get_env_name(env),
-        }
+        },
+        named_configs=["random_rollouts"],
     )
 
     # just a sanity check to ensure we actually evaluated
