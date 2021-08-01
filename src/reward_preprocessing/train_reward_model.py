@@ -2,17 +2,16 @@ from pathlib import Path
 import tempfile
 
 from sacred import Experiment
-from stable_baselines3 import PPO
 import torch
 from tqdm import tqdm
 
-from reward_preprocessing.datasets import get_data_loaders, to_torch
 from reward_preprocessing.env import create_env, env_ingredient
 from reward_preprocessing.models import MlpRewardModel
-from reward_preprocessing.utils import add_observers
+from reward_preprocessing.utils import add_observers, use_rollouts
 
 ex = Experiment("train_reward_model", ingredients=[env_ingredient])
 add_observers(ex)
+get_data_loaders = use_rollouts(ex)
 
 
 @ex.config
@@ -27,52 +26,14 @@ def config():
     # without an extension (but including a filename).
     save_path = None
     run_dir = "runs/reward_model"
-    data_path = None
-    agent_path = None
-    num_workers = 0
-    steps = 10000
-    test_steps = 5000
-    batch_size = 32
 
     _ = locals()  # make flake8 happy
     del _
 
 
 @ex.automain
-def main(
-    epochs: int,
-    num_workers: int,
-    batch_size: int,
-    data_path: str,
-    save_path: str,
-    agent_path: str,
-    steps: int,
-    test_steps: int,
-    _seed: int,
-):
-
-    transform = to_torch
-    if data_path:
-        # if a path to a dataset is given, we don't need an environment
-        env = None
-    else:
-        env = create_env()
-    if agent_path:
-        agent = PPO.load(agent_path)
-    else:
-        agent = None
-
-    train_loader, test_loader = get_data_loaders(
-        batch_size,
-        num_workers,
-        _seed,
-        data_path,
-        env,
-        agent,
-        steps,
-        test_steps,
-        transform,
-    )
+def main(epochs: int, save_path: str):
+    train_loader, test_loader = get_data_loaders(create_env)
 
     if torch.cuda.is_available():
         device = torch.device("cuda")
