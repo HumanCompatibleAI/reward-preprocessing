@@ -25,10 +25,13 @@ def test_dataset_creation(env, agent_path):
         path = Path(dirname) / "dataset"
         create_rollouts_ex.run(
             config_updates={
-                "agent_path": str(agent_path),
+                # the empty string here isn't necessary, but otherwise
+                # we get warnings about ragged nested sequences
+                # (I think Sacred must convert our list to an array somewhere?)
+                "rollouts": [(0.5, str(agent_path)), (1, "")],
                 "save_path": str(path),
-                "train_samples": 10,
-                "test_samples": 10,
+                "steps": 10,
+                "test_steps": 10,
                 "env.name": get_env_name(env),
             }
         )

@@ -53,6 +53,10 @@ def get_transitions(
 ) -> Iterator[Tuple[Transition, float]]:
     """Generate transitions using a given environment and policy.
 
+    Note that higher-level functions (such as inside Ingredients)
+    should usually use DynamicRewardData instead, created using
+    datasets.get_dynamic_dataset() or even with the utils.use_rollouts() helper.
+
     The reason to implement this as an iterator (rather than just returning
     a list of transitions) is mainly that this allows doing stuff immediately
     after each transition, such as rendering the environment.

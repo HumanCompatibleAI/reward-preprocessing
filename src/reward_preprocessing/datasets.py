@@ -248,6 +248,27 @@ def collate_fn(
     )
 
 
+def get_dynamic_dataset(
+    rollouts: List[RolloutConfig],
+    venv_factory: Callable[[], VecEnv],
+    transform: Optional[Callable] = None,
+    seed: int = 0,
+    num: Optional[int] = None,
+):
+    datasets = []
+    weights = []
+    for cfg in rollouts:
+        # environments are seeded by DynamicRewardData, this will already
+        # ensure they all have different seeds
+        venv = venv_factory()
+        policy = get_policy(cfg.random_prob, cfg.agent_path, venv)
+        train_data = DynamicRewardData(venv, policy, transform=transform, seed=seed + 1)
+        datasets.append(train_data)
+        weights.append(cfg.weight)
+
+    return MixedDataset(datasets, weights, num, seed)
+
+
 def _get_stored_data_loaders(
     batch_size: int,
     num_workers: int,
@@ -298,24 +319,11 @@ def _get_dynamic_data_loaders(
 ) -> Tuple[torch.utils.data.DataLoader, torch.utils.data.DataLoader]:
     if num_train is None or num_test is None:
         warnings.warn("No number of samples given, will return an infinite DataLoader.")
-    train_sets = []
-    train_weights = []
-    test_sets = []
-    test_weights = []
-    for i, cfg in enumerate(rollouts):
-        # environments are seeded by DynamicRewardData, this will already
-        # ensure they all have different seeds
-        venv = venv_factory()
-        policy = get_policy(cfg.random_prob, cfg.agent_path, venv)
-        train_data = DynamicRewardData(venv, policy, transform=transform, seed=seed + 1)
-        test_data = DynamicRewardData(venv, policy, transform=transform, seed=seed + 1)
-        train_sets.append(train_data)
-        test_sets.append(test_data)
-        train_weights.append(cfg.weight)
-        test_weights.append(cfg.weight)
 
-    train_data = MixedDataset(train_sets, train_weights, num_train, seed)
-    test_data = MixedDataset(train_sets, train_weights, num_test, seed)
+    train_data = get_dynamic_dataset(rollouts, venv_factory, transform, seed, num_train)
+    test_data = get_dynamic_dataset(
+        rollouts, venv_factory, transform, seed + 1, num_test
+    )
 
     train_loader = torch.utils.data.DataLoader(
         train_data,

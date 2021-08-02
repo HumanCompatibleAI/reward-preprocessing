@@ -11,7 +11,7 @@ from reward_preprocessing.utils import add_observers, use_rollouts
 
 ex = Experiment("train_reward_model", ingredients=[env_ingredient])
 add_observers(ex)
-get_data_loaders = use_rollouts(ex)
+get_data_loaders, _ = use_rollouts(ex)
 
 
 @ex.config
