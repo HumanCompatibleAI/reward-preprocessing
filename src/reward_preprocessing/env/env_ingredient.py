@@ -11,12 +11,13 @@ env_ingredient = Ingredient("env")
 
 @env_ingredient.config
 def config():
-    name = "EmptyMaze-v0"
-    options = {}
-    stats_path = None
+    name = "EmptyMaze-v0"  # gym environment id
+    options = {}  # gym env kwargs
+    stats_path = None  # path to stats file for normalization (incl. extension)
+    # list of complete gym wrapper names (incl. module), from inner- to outermost
     wrappers = []
-    n_envs = 1
-    normalize = False
+    n_envs = 1  # number of parallel environments
+    normalize = False  # whether to normalize observations
     _ = locals()  # make flake8 happy
     del _
 

@@ -15,12 +15,12 @@ get_data_loaders, _ = use_rollouts(sparsify_ingredient)
 @sparsify_ingredient.config
 def config():
     enabled = True
-    potential = None
-    potential_options = {}
-    lr = 0.01
-    log_every = 100
-    lr_decay_rate = None
-    lr_decay_every = 100
+    potential = None  # class name of the potential
+    potential_options = {}  # kwargs for the potential (other than gamma)
+    lr = 0.01  # learning rate
+    log_every = 100  # log every n batches
+    lr_decay_rate = None  # factor to multiply by on each LR decay
+    lr_decay_every = 100  # decay the learning rate every n batches
 
     _ = locals()  # make flake8 happy
     del _

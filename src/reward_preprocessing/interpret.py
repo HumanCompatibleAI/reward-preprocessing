@@ -34,9 +34,9 @@ add_observers(ex)
 @ex.config
 def config():
     run_dir = "runs/interpret"
-    agent_path = None
-    model_path = None
-    gamma = 0.99
+    agent_path = None  # path to the agent to use for sampling (without extension)
+    model_path = None  # path to the model to be interpreted (with extension)
+    gamma = 0.99  # discount rate (used for all potential shapings)
 
     _ = locals()  # make flake8 happy
     del _

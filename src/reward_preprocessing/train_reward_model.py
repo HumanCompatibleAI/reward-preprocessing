@@ -26,13 +26,13 @@ def config():
     # But if you already know you will need the trained model, then
     # set this to a filepath where you want the model to be stored,
     # without an extension (but including a filename).
-    save_path = None
+    save_path = None  # path to save the model to (without extension)
     run_dir = "runs/reward_model"
-    model_type = "ss"
-    lr = 0.001
-    lr_decay_rate = None
-    lr_decay_every = 100  # decay learning rate every n batches (if decay rate is set)
-    wb = {}
+    model_type = "ss"  # type of reward model, either 'ss' or 'sas'
+    lr = 0.001  # learning rate
+    lr_decay_rate = None  # factor to multiply by on each LR decay
+    lr_decay_every = 100  # decay the learning rate every n batches
+    wb = {}  # kwargs for wandb.init()
     eval_every = 5  # compute test loss every n episodes
     log_every = 20  # how many batches to aggregate before logging to wandb
 
