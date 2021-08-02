@@ -9,7 +9,7 @@ from reward_preprocessing.preprocessing.potential_shaping import instantiate_pot
 from reward_preprocessing.utils import get_env_name, sacred_save_fig, use_rollouts
 
 sparsify_ingredient = Ingredient("sparsify", ingredients=[env_ingredient])
-get_data_loaders = use_rollouts(sparsify_ingredient)
+get_data_loaders, _ = use_rollouts(sparsify_ingredient)
 
 
 @sparsify_ingredient.config

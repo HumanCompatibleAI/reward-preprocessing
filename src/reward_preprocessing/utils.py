@@ -7,9 +7,13 @@ import matplotlib.pyplot as plt
 import sacred
 from stable_baselines3.common.vec_env import VecVideoRecorder
 from stable_baselines3.common.vec_env.base_vec_env import VecEnv, VecEnvObs
-import torch
 
-from reward_preprocessing.datasets import RolloutConfig, get_data_loaders, to_torch
+from reward_preprocessing.datasets import (
+    RolloutConfig,
+    get_data_loaders,
+    get_dynamic_dataset,
+    to_torch,
+)
 
 EnvFactory = Callable[[], VecEnv]
 
@@ -54,9 +58,7 @@ def add_observers(ex: sacred.Experiment) -> None:
 
 def use_rollouts(
     ing: sacred.Ingredient,
-) -> Callable[
-    [EnvFactory], Tuple[torch.utils.data.DataLoader, torch.utils.data.DataLoader]
-]:
+) -> Tuple[Callable, Callable]:
     """Add a config scope to a Sacred Experiment which will add configs
     needed for using rollouts.
 
@@ -110,7 +112,26 @@ def use_rollouts(
             transform=to_torch,
         )
 
-    return ing.capture(_get_data_loaders)
+    def _get_dataset(
+        venv_factory,
+        _seed,
+        rollouts,
+        steps,
+        transform=None,
+    ):
+        # turn the rollout configs from ReadOnlyLists into RolloutConfigs
+        # (Sacred turns the namedtuples into lists)
+        if rollouts is not None:
+            rollouts = [RolloutConfig(*x) for x in rollouts]
+        return get_dynamic_dataset(
+            venv_factory=venv_factory,
+            rollouts=rollouts,
+            seed=_seed,
+            num=steps,
+            transform=transform,
+        )
+
+    return ing.capture(_get_data_loaders), ing.capture(_get_dataset)
 
 
 def sacred_save_fig(fig: plt.Figure, run, filename: str) -> None:
