@@ -62,3 +62,4 @@ def main(save_path: str, steps: int, test_steps: int):
         test_rewards=np.array(rewards["test"]),
         test_dones=np.array(dones["test"]),
     )
+    ex.add_artifact(path)
