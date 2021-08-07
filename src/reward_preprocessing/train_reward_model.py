@@ -100,16 +100,21 @@ def main(
             running_loss += loss.item()
             if scheduler and step % lr_decay_every == 0:
                 scheduler.step()
-                print(f"LR: {scheduler.get_last_lr()[0]:.2E}")
                 if wb:
                     wandb.log(
                         {"lr": scheduler.get_last_lr(), "epoch": e + 1}, step=step
                     )
-            if step % log_every == 0 and wb:
-                wandb.log(
-                    {"loss/train": running_loss / log_every, "epoch": e + 1}, step=step
-                )
-                running_loss = 0.0
+                else:
+                    print(f"LR: {scheduler.get_last_lr()[0]:.2E}")
+            if step % log_every == 0:
+                if wb:
+                    wandb.log(
+                        {"loss/train": running_loss / log_every, "epoch": e + 1},
+                        step=step,
+                    )
+                    running_loss = 0.0
+                else:
+                    print(f"Loss: {running_loss:.3E}")
 
         # eval every eval_every epochs, but also after the final epoch
         if (e + 1) % eval_every == 0 or e == epochs - 1:
