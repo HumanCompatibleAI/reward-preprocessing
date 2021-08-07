@@ -34,7 +34,7 @@ def empty_maze():
 @env_ingredient.named_config
 def mountain_car():
     name = "MountainCar-v0"
-    stats_path = "results/stats/MountainCar-v0.pkl"
+    stats_path = "results/stats/mountain_car.pkl"
     normalize = True
     _ = locals()  # make flake8 happy
     del _
@@ -44,6 +44,7 @@ def mountain_car():
 def half_cheetah():
     name = "HalfCheetah-v3"
     wrappers = ["sb3_contrib.common.wrappers.TimeFeatureWrapper"]
+    stats_path = "results/stats/half_cheetah.pkl"
     options = {"exclude_current_positions_from_observation": False}
     n_envs = 16
     normalize = True
