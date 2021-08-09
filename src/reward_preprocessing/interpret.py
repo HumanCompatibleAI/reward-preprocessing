@@ -17,7 +17,7 @@ from reward_preprocessing.interp import (
     visualize_rollout,
     visualize_transitions,
 )
-from reward_preprocessing.models import MlpRewardModel
+from reward_preprocessing.models import MlpRewardModel, SasRewardModel
 from reward_preprocessing.utils import add_observers
 
 ex = Experiment(
@@ -39,6 +39,7 @@ def config():
     agent_path = None  # path to the agent to use for sampling (without extension)
     model_path = None  # path to the model to be interpreted (with extension)
     gamma = 0.99  # discount rate (used for all potential shapings)
+    model_type = "ss"  # type of reward model, either 'ss' or 'sas'
     wb = {}  # kwargs for wandb.init()
 
     _ = locals()  # make flake8 happy
@@ -47,7 +48,12 @@ def config():
 
 @ex.automain
 def main(
-    model_path: str, agent_path: str, gamma: float, wb: Mapping[str, Any], _config
+    model_path: str,
+    agent_path: str,
+    gamma: float,
+    model_type: str,
+    wb: Mapping[str, Any],
+    _config,
 ):
     env = create_env()
     agent = None
@@ -60,7 +66,15 @@ def main(
         device = torch.device("cuda")
     else:
         device = torch.device("cpu")
-    model = MlpRewardModel(env.observation_space.shape).to(device)
+
+    if model_type == "ss":
+        model = MlpRewardModel(env.observation_space.shape).to(device)
+    elif model_type == "sas":
+        model = SasRewardModel(env.observation_space.shape, env.action_space.shape).to(
+            device
+        )
+    else:
+        raise ValueError(f"Unknown model type '{model_type}', expected 'ss' or 'sas'.")
     model.load_state_dict(torch.load(model_path))
 
     use_wandb = False
