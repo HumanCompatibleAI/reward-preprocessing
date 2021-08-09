@@ -1,8 +1,10 @@
+from typing import Any, Mapping
 import warnings
 
 from sacred import Experiment
 from stable_baselines3 import PPO
 import torch
+import wandb
 
 from reward_preprocessing.env import create_env, env_ingredient
 from reward_preprocessing.interp import (
@@ -37,13 +39,16 @@ def config():
     agent_path = None  # path to the agent to use for sampling (without extension)
     model_path = None  # path to the model to be interpreted (with extension)
     gamma = 0.99  # discount rate (used for all potential shapings)
+    wb = {}  # kwargs for wandb.init()
 
     _ = locals()  # make flake8 happy
     del _
 
 
 @ex.automain
-def main(model_path: str, agent_path: str, gamma: float):
+def main(
+    model_path: str, agent_path: str, gamma: float, wb: Mapping[str, Any], _config
+):
     env = create_env()
     agent = None
     if agent_path:
@@ -57,8 +62,19 @@ def main(model_path: str, agent_path: str, gamma: float):
         device = torch.device("cpu")
     model = MlpRewardModel(env.observation_space.shape).to(device)
     model.load_state_dict(torch.load(model_path))
+
+    use_wandb = False
+    if wb:
+        wandb.init(
+            project="reward_preprocessing",
+            job_type="interpret",
+            config=_config,
+            **wb,
+        )
+        use_wandb = True
+
     model = add_noise_potential(model, gamma)
-    model = sparsify(model, device=device, gamma=gamma)
+    model = sparsify(model, device=device, gamma=gamma, use_wandb=use_wandb)
     model.eval()
     visualize_transitions(model, env, device=device, agent=agent)
     visualize_rollout(model, env, device=device, agent=agent)
