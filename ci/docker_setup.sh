@@ -17,5 +17,8 @@ pipenv run pip install dist/reward_preprocessing-*.whl
 
 # Download the Mujoco key
 curl -o /root/.mujoco/mjkey.txt "$MUJOCO_KEY_URL"
+# put the weights & biases credentials into .netrc
+echo "$NETRC_CONTENTS" > /root/.netrc
 # afterwards, give the user an interactive shell
-exec /bin/bash
+# the --init-file hack immediately activates the virtual environment
+exec /bin/bash --init-file <(echo "pipenv shell")
