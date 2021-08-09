@@ -70,13 +70,11 @@ def sparsify(
         return x.abs().mean()
 
     running_loss = 0.0
-    num_episodes = 0.0
     step = 0
     for e in range(epochs):
         for i, (inputs, rewards) in enumerate(train_loader):
             step += 1
             optimizer.zero_grad()
-            num_episodes += torch.sum(inputs.done)
             loss = loss_fn(model(inputs.to(device)))
             loss.backward()
             optimizer.step()
@@ -94,21 +92,13 @@ def sparsify(
                     wandb.log(
                         {
                             "loss/train": running_loss / log_every,
-                            "episode_length/train": batch_size
-                            * log_every
-                            / num_episodes.item(),
                             "epoch": e + 1,
                         },
                         step=step,
                     )
                 else:
                     print(f"Loss: {running_loss:.3E}")
-                    print(
-                        "Avg. episode length: "
-                        f"{batch_size * log_every / num_episodes.item():.1f}"
-                    )
                 running_loss = 0.0
-                num_episodes = 0.0
 
     try:
         fig = model.plot(env)
