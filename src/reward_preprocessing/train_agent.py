@@ -34,7 +34,8 @@ def config():
     save_path = ""
     num_frames = 100
     run_dir = "runs/agent"
-    eval_episodes = 0
+    eval_episodes = 5
+    final_eval_episodes = 0
     ppo_options = {}
     wb = {}
     eval_every = 10000  # eval every n steps. Set to 0 to disable.
@@ -76,6 +77,7 @@ def main(
     ppo_options: Mapping[str, Any],
     wb: Mapping[str, Any],
     eval_every: int,
+    final_eval_episodes: int,
     _config,
 ):
     env = create_env()
@@ -89,11 +91,16 @@ def main(
 
     eval_callback = None
     if eval_every > 0:
+        # we want at most as many envs as there are
+        # evaluation episodes, otherwise we'll end up
+        # throwing out a lot of episodes
+        eval_n_envs = min(env.num_envs, eval_episodes)
         eval_callback = EvalCallback(
-            create_env(),
+            create_env(n_envs=eval_n_envs),
             eval_freq=eval_every,
             deterministic=True,
             render=False,
+            n_eval_episodes=eval_episodes,
         )
 
     # If any weights & biases options are set, we use that for logging.
@@ -105,9 +112,13 @@ def main(
         model.set_logger(logger)
     model.learn(total_timesteps=steps, callback=eval_callback)
 
-    if eval_episodes:
+    if final_eval_episodes:
+        # we want at most as many envs as there are
+        # evaluation episodes, otherwise we'll end up
+        # throwing out a lot of episodes
+        eval_n_envs = min(env.num_envs, final_eval_episodes)
         mean_reward, std_reward = evaluate_policy(
-            model, env, n_eval_episodes=eval_episodes
+            model, create_env(n_envs=eval_n_envs), n_eval_episodes=final_eval_episodes
         )
     else:
         mean_reward, std_reward = None, None
@@ -131,7 +142,8 @@ def main(
 
         # record a video of the trained agent
         env = ContinuousVideoRecorder(
-            env,
+            # for the video, we just want to display one environment
+            create_env(n_envs=1),
             str(path),
             record_video_trigger=lambda x: x == 0,
             video_length=num_frames,
