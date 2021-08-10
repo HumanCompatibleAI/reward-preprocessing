@@ -24,10 +24,6 @@ class StoredRewardData(torch.utils.data.Dataset):
             Doesn't need to contain the .npz extension.
         train: whether to use the training or test set.
         transform: transforms to apply
-        load_to_memory: whether to load the dataset to memory
-            or leave it on disk and read it from there on demand.
-            Default is to load to memory (which makes sense for small datasets).
-            If you use very large datasets, you may have to change that.
     """
 
     def __init__(
