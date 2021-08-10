@@ -1,8 +1,7 @@
 """Module for datasets consisting of transition-reward pairs."""
-from collections import namedtuple
 from pathlib import Path
 import random
-from typing import Callable, List, Optional, Tuple
+from typing import Callable, List, NamedTuple, Optional, Tuple
 import warnings
 
 import numpy as np
@@ -14,9 +13,11 @@ import torch
 from reward_preprocessing.policy import get_policy
 from reward_preprocessing.transition import Transition, get_transitions
 
-RolloutConfig = namedtuple(
-    "RolloutConfig", ["random_prob", "agent_path", "weight"], defaults=[None, 1]
-)
+
+class RolloutConfig(NamedTuple):
+    random_prob: float
+    agent_path: Optional[str] = None
+    weight: float = 1.0
 
 
 class MixedDataset(torch.utils.data.IterableDataset):
