@@ -9,3 +9,4 @@ Dockerfile
 /results
 /build
 /dist
+/wandb

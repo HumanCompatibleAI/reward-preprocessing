@@ -1,10 +1,15 @@
 from pathlib import Path
+import sys
 import tempfile
 from typing import Any, Mapping
 
 from sacred import Experiment
 from stable_baselines3 import PPO
+from stable_baselines3.common.callbacks import EvalCallback
 from stable_baselines3.common.evaluation import evaluate_policy
+from stable_baselines3.common.logger import HumanOutputFormat, Logger
+from stable_baselines3.common.vec_env.vec_normalize import VecNormalize
+from torch import nn
 
 from reward_preprocessing.env import create_env, env_ingredient
 from reward_preprocessing.utils import (
@@ -12,6 +17,7 @@ from reward_preprocessing.utils import (
     add_observers,
     get_env_name,
 )
+from reward_preprocessing.wandb_logger import WandbOutputFormat
 
 ex = Experiment("train_agent", ingredients=[env_ingredient])
 add_observers(ex)
@@ -28,8 +34,11 @@ def config():
     save_path = ""
     num_frames = 100
     run_dir = "runs/agent"
-    eval_episodes = 0
+    eval_episodes = 5
+    final_eval_episodes = 0
     ppo_options = {}
+    wb = {}
+    eval_every = 10000  # eval every n steps. Set to 0 to disable.
 
     _ = locals()  # make flake8 happy
     del _
@@ -37,6 +46,25 @@ def config():
 
 DEFAULT_PPO_OPTIONS = {
     "MountainCar-v0": {"n_steps": 256, "gae_lambda": 0.98, "n_epochs": 4},
+    # Converted from
+    # https://github.com/DLR-RM/rl-trained-agents/blob/28bc94a4a39a7845bb9541796af2fb077a47673d/ppo/HalfCheetahBulletEnv-v0_1/HalfCheetahBulletEnv-v0/config.yml
+    "HalfCheetah-v3": {
+        "batch_size": 128,
+        "clip_range": 0.4,
+        "gamma": 0.99,
+        "learning_rate": 3e-5,
+        "n_steps": 512,
+        "gae_lambda": 0.9,
+        "n_epochs": 20,
+        "use_sde": True,
+        "sde_sample_freq": 4,
+        "policy_kwargs": {
+            "log_std_init": -2,
+            "ortho_init": False,
+            "activation_fn": nn.ReLU,
+            "net_arch": [{"pi": [256, 256], "vf": [256, 256]}],
+        },
+    },
 }
 
 
@@ -47,6 +75,10 @@ def main(
     num_frames: int,
     eval_episodes: int,
     ppo_options: Mapping[str, Any],
+    wb: Mapping[str, Any],
+    eval_every: int,
+    final_eval_episodes: int,
+    _config,
 ):
     env = create_env()
     env_name = get_env_name(env)
@@ -56,11 +88,37 @@ def main(
         ppo_options = {**DEFAULT_PPO_OPTIONS[env_name], **ppo_options}
 
     model = PPO("MlpPolicy", env, verbose=1, **ppo_options)
-    model.learn(total_timesteps=steps)
 
-    if eval_episodes:
+    eval_callback = None
+    if eval_every > 0:
+        # we want at most as many envs as there are
+        # evaluation episodes, otherwise we'll end up
+        # throwing out a lot of episodes
+        eval_n_envs = min(env.num_envs, eval_episodes)
+        eval_callback = EvalCallback(
+            create_env(n_envs=eval_n_envs),
+            eval_freq=eval_every,
+            deterministic=True,
+            render=False,
+            n_eval_episodes=eval_episodes,
+        )
+
+    # If any weights & biases options are set, we use that for logging.
+    if wb:
+        writer = WandbOutputFormat(wb, _config)
+        logger = Logger(
+            folder=None, output_formats=[writer, HumanOutputFormat(sys.stdout)]
+        )
+        model.set_logger(logger)
+    model.learn(total_timesteps=steps, callback=eval_callback)
+
+    if final_eval_episodes:
+        # we want at most as many envs as there are
+        # evaluation episodes, otherwise we'll end up
+        # throwing out a lot of episodes
+        eval_n_envs = min(env.num_envs, final_eval_episodes)
         mean_reward, std_reward = evaluate_policy(
-            model, env, n_eval_episodes=eval_episodes
+            model, create_env(n_envs=eval_n_envs), n_eval_episodes=final_eval_episodes
         )
     else:
         mean_reward, std_reward = None, None
@@ -75,9 +133,17 @@ def main(
         model.save(model_path)
         ex.add_artifact(model_path.with_suffix(".zip"))
 
+        if isinstance(env, VecNormalize):
+            # if we used normalization, then store the final statistics
+            # so we can reuse them later
+            stats_path = path / "vec_normalize.pkl"
+            env.save(str(stats_path))
+            ex.add_artifact(stats_path)
+
         # record a video of the trained agent
         env = ContinuousVideoRecorder(
-            env,
+            # for the video, we just want to display one environment
+            create_env(n_envs=1),
             str(path),
             record_video_trigger=lambda x: x == 0,
             video_length=num_frames,

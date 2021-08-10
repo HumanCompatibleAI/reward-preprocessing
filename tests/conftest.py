@@ -57,7 +57,7 @@ gym.envs.register(
 )
 
 
-@pytest.fixture(params=["EmptyMaze-v0", "MountainCar-v0", "HalfCheetah-v2"])
+@pytest.fixture(params=["EmptyMaze-v0", "MountainCar-v0", "HalfCheetah-v3"])
 def env(request):
     """Return a gym environment."""
     from reward_preprocessing.env import create_env

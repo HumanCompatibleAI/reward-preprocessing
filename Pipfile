@@ -12,6 +12,8 @@ gym = "*"
 tqdm = "*"
 mazelab = {editable = true, git = "https://github.com/ejnnr/mazelab"}
 mujoco-py = "*"
+wandb = "*"
+sb3-contrib = "*"
 
 [dev-packages]
 pytest = "*"
