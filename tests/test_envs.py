@@ -10,7 +10,6 @@ import reward_preprocessing.env  # noqa: F401
 def test_env_creation(name):
     env = gym.make(name)
 
-
     obs = env.reset()
     for _ in range(10):
         action = env.action_space.sample()
