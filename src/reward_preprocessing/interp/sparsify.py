@@ -2,6 +2,7 @@ from typing import Any, Mapping
 
 from sacred import Ingredient
 import torch
+from tqdm import tqdm
 import wandb
 
 from reward_preprocessing.env import create_env, env_ingredient
@@ -72,7 +73,7 @@ def sparsify(
     running_loss = 0.0
     step = 0
     for e in range(epochs):
-        for i, (inputs, rewards) in enumerate(train_loader):
+        for i, (inputs, rewards) in tqdm(enumerate(train_loader)):
             step += 1
             optimizer.zero_grad()
             loss = loss_fn(model(inputs.to(device)))
