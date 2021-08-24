@@ -86,14 +86,13 @@ def get_policy(
     # the # type: ignore comments
 
     if random_prob == 1:
-        return policy_to_callable(venv)  # type: ignore
+        return policy_to_callable(venv)
 
-    agent = PPO.load(expert_path)  # type: ignore
-
+    agent = PPO.load(expert_path)
     if random_prob == 0:
         return policy_to_callable(agent)
 
-    return mix_policies(venv, agent, random_prob)  # type: ignore
+    return mix_policies(venv, agent, random_prob)
 
 
 def mix_policies(
