@@ -24,10 +24,6 @@ class StoredRewardData(torch.utils.data.Dataset):
             Doesn't need to contain the .npz extension.
         train: whether to use the training or test set.
         transform: transforms to apply
-        load_to_memory: whether to load the dataset to memory
-            or leave it on disk and read it from there on demand.
-            Default is to load to memory (which makes sense for small datasets).
-            If you use very large datasets, you may have to change that.
     """
 
     def __init__(
@@ -35,22 +31,33 @@ class StoredRewardData(torch.utils.data.Dataset):
         path: Path,
         train: bool = True,
         transform: Optional[Callable] = None,
-        load_to_memory: bool = True,
     ):
-        # If you change the data loading code here, also change it
-        # in get_worker_init_fn
-        mmap_mode = "r" if load_to_memory else None
-        self.data = np.load(path.with_suffix(".npz"), mmap_mode=mmap_mode)
+        npz = np.load(path.with_suffix(".npz"))
         self.mode = "train" if train else "test"
+        self.data = {
+            "states": npz[f"{self.mode}_states"],
+            "actions": npz[f"{self.mode}_actions"],
+            "next_states": npz[f"{self.mode}_next_states"],
+            "rewards": npz[f"{self.mode}_rewards"],
+            "dones": npz[f"{self.mode}_dones"],
+        }
+        assert self.data["states"].shape == self.data["next_states"].shape
+        assert (
+            len(self.data["states"])
+            == len(self.data["actions"])
+            == len(self.data["rewards"])
+            == len(self.data["dones"])
+        )
         self.transform = transform
-        self.state_shape = self.data[f"{self.mode}_states"].shape[1:]
+        self.state_shape = self.data["states"].shape[1:]
+        self.action_shape = self.data["actions"].shape[1:]
 
     def __getitem__(self, k):
-        state = self.data[f"{self.mode}_states"][k]
-        action = self.data[f"{self.mode}_actions"][k]
-        next_state = self.data[f"{self.mode}_next_states"][k]
-        reward = self.data[f"{self.mode}_rewards"][k]
-        done = self.data[f"{self.mode}_dones"][k]
+        state = self.data["states"][k]
+        action = self.data["actions"][k]
+        next_state = self.data["next_states"][k]
+        reward = self.data["rewards"][k]
+        done = self.data["dones"][k]
 
         out = Transition(state, action, next_state, done), reward
 
@@ -60,10 +67,7 @@ class StoredRewardData(torch.utils.data.Dataset):
         return out
 
     def __len__(self):
-        return self.data[f"{self.mode}_states"].shape[0]
-
-    def close(self):
-        self.data.close()
+        return self.data["states"].shape[0]
 
 
 class DynamicRewardData(torch.utils.data.IterableDataset):
@@ -132,28 +136,6 @@ def to_torch(x: Tuple[Transition, float]) -> Tuple[Transition, torch.Tensor]:
     return transition, reward
 
 
-def get_worker_init_fn(path: Path, load_to_memory: bool = True):
-    """Initialize the dataset with its own copy of the NpzFile in each worker.
-    There is a bug in Numpy (https://github.com/numpy/numpy/issues/18124)
-    which leads to errors when a .npz file is loaded in the main process
-    and then the NpzFile object created in the main process is accessed in each worker.
-    Pytorch creates shallow copies of datasets for each worker, so the NpzFile
-    would usually be shared between workers, so this error would occur.
-    As a workaround, we reload the .npz file in each worker.
-
-    This is a bit hacky because we duplicate code from the StoredRewardData class
-    here (since StoredRewardData should also work on its own, without any DataLoader).
-    But so far, I haven't found a better solution.
-    """
-    mmap_mode = "r" if load_to_memory else None
-
-    def worker_init_fn(worker_id):
-        info = torch.utils.data.get_worker_info()
-        info.dataset.data = np.load(path.with_suffix(".npz"), mmap_mode=mmap_mode)
-
-    return worker_init_fn
-
-
 def collate_fn(
     data: List[Tuple[Transition, torch.Tensor]]
 ) -> Tuple[Transition, torch.Tensor]:
@@ -195,9 +177,6 @@ def _get_stored_data_loaders(
         batch_size=batch_size,
         shuffle=True,
         num_workers=num_workers,
-        # workaround for https://github.com/numpy/numpy/issues/18124
-        # see docstring of get_worker_init_fn for details
-        worker_init_fn=get_worker_init_fn(path),
         collate_fn=collate_fn,
     )
     test_loader = torch.utils.data.DataLoader(
@@ -205,9 +184,6 @@ def _get_stored_data_loaders(
         batch_size=batch_size,
         shuffle=False,
         num_workers=num_workers,
-        # workaround for https://github.com/numpy/numpy/issues/18124
-        # see docstring of get_worker_init_fn for details
-        worker_init_fn=get_worker_init_fn(path),
         collate_fn=collate_fn,
     )
     return train_loader, test_loader
