@@ -32,8 +32,6 @@ class StoredRewardData(torch.utils.data.Dataset):
         train: bool = True,
         transform: Optional[Callable] = None,
     ):
-        # If you change the data loading code here, also change it
-        # in get_worker_init_fn
         npz = np.load(path.with_suffix(".npz"))
         self.mode = "train" if train else "test"
         self.data = {
@@ -43,6 +41,13 @@ class StoredRewardData(torch.utils.data.Dataset):
             "rewards": npz[f"{self.mode}_rewards"],
             "dones": npz[f"{self.mode}_dones"],
         }
+        assert self.data["states"].shape == self.data["next_states"].shape
+        assert (
+            len(self.data["states"])
+            == len(self.data["actions"])
+            == len(self.data["rewards"])
+            == len(self.data["dones"])
+        )
         self.transform = transform
         self.state_shape = self.data["states"].shape[1:]
         self.action_shape = self.data["actions"].shape[1:]
