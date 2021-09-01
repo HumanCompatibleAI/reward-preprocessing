@@ -81,6 +81,10 @@ class MixedDataset(torch.utils.data.IterableDataset):
             self.yielded += 1
 
     def __len__(self):
+        """Maximum number of transitions in the dataset or None if infinite.
+
+        Warning: the actual number of transitions might be lower
+        if one of the constituent datasets is too small!"""
         return self.num
 
 
@@ -194,6 +198,7 @@ class DynamicRewardData(torch.utils.data.IterableDataset):
             yield out
 
     def __len__(self):
+        """Number of transitions in the dataset or None if infinite."""
         return self.num
 
 
@@ -258,16 +263,18 @@ def get_dynamic_dataset(
 ):
     datasets = []
     weights = []
-    for cfg in rollouts:
+    for i, cfg in enumerate(rollouts):
         # environments are seeded by DynamicRewardData, this will already
         # ensure they all have different seeds
         venv = venv_factory()
-        policy = get_policy(cfg.random_prob, cfg.agent_path, venv)
-        train_data = DynamicRewardData(venv, policy, transform=transform, seed=seed + 1)
+        policy = get_policy(cfg.random_prob, cfg.agent_path, venv.action_space)
+        train_data = DynamicRewardData(venv, policy, transform=transform, seed=seed + i)
         datasets.append(train_data)
         weights.append(cfg.weight)
 
-    return MixedDataset(datasets, weights, num, seed)
+    # maybe this is too paranoid but we've already used `seed` for the
+    # dynamic reward data, so we use `seed - 1` here
+    return MixedDataset(datasets, weights, num, seed - 1)
 
 
 def _get_stored_data_loaders(

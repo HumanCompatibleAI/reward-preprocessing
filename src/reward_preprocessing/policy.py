@@ -1,18 +1,18 @@
 import random
 from typing import Callable, Optional, Union
 
+import gym
 import numpy as np
 from stable_baselines3 import PPO
 from stable_baselines3.common.base_class import BaseAlgorithm
 from stable_baselines3.common.policies import BasePolicy
-from stable_baselines3.common.vec_env import VecEnv
 
 # A PolicyCallable is a function that takes an array of observations
 # and returns an array of corresponding actions.
 PolicyCallable = Callable[[np.ndarray], np.ndarray]
 # A Policy can be a PolicyCallable, but also a BaseAlgorithm/BasePolicy
-# or a VecEnv (which means that random actions will be chosen)
-Policy = Union[VecEnv, PolicyCallable, BaseAlgorithm, BasePolicy]
+# or a gym action space (which means that random actions will be chosen)
+Policy = Union[gym.Space, PolicyCallable, BaseAlgorithm, BasePolicy]
 
 
 def policy_to_callable(
@@ -21,7 +21,7 @@ def policy_to_callable(
     """Turn a policy defined in any valid way into a Callable for getting actions.
 
     Args:
-        policy (Policy): either a VecEnv (for random actions), a stable baselines
+        policy (Policy): either a gym space (for random actions), a stable baselines
             policy or algorithm, or a Callable (which will be returned unchanged)
         deterministic_policy (bool, optional): Whether to use deterministic actions
             or stochastic ones. Only relevant if a stable-baselines policy is used.
@@ -31,12 +31,12 @@ def policy_to_callable(
         PolicyCallable: a function that takes in an array of observations
             and returns an array of actions for those observations.
     """
-    if isinstance(policy, VecEnv):
+    if isinstance(policy, gym.Space):
 
         def get_actions(states):
             acts = []
             for _ in range(len(states)):
-                acts.append(policy.action_space.sample())  # type: ignore
+                acts.append(policy.sample())  # type: ignore
             return np.stack(acts, axis=0)
 
     elif isinstance(policy, (BaseAlgorithm, BasePolicy)):
@@ -52,7 +52,7 @@ def policy_to_callable(
 
     else:
         raise TypeError(
-            "Policy must be a VecEnv, a stable-baselines policy or algorithm, "
+            "Policy must be a gym.Space, a stable-baselines policy or algorithm, "
             f"or a Callable, got {type(policy)} instead"
         )
 
@@ -62,7 +62,7 @@ def policy_to_callable(
 def get_policy(
     random_prob: float = 1,
     expert_path: Optional[str] = None,
-    venv: Optional[VecEnv] = None,
+    action_space: Optional[gym.Space] = None,
 ) -> PolicyCallable:
     """Create a policy (which can be passed to get_transitions etc.)
     based on config values.
@@ -73,11 +73,11 @@ def get_policy(
             random policy. Set to 0 to use an expert policy without noise.
         expert_path (str, optional): path to a trained agent model.
             Needs to be set if random_prob < 1.
-        venv (VecEnv, optional): environment to use for sampling random
+        action_space (gym.Space, optional): action space to use for sampling random
             actions, only needed if random_prob > 0.
     """
-    if random_prob > 0 and venv is None:
-        raise ValueError("random_prob is > 0, so venv must be set")
+    if random_prob > 0 and action_space is None:
+        raise ValueError("random_prob is > 0, so action_space must be set")
     if random_prob < 1 and expert_path is None:
         raise ValueError("random_prob is < 1, so expert_path must be set")
 
@@ -86,13 +86,13 @@ def get_policy(
     # the # type: ignore comments
 
     if random_prob == 1:
-        return policy_to_callable(venv)
+        return policy_to_callable(action_space)
 
     agent = PPO.load(expert_path)
     if random_prob == 0:
         return policy_to_callable(agent)
 
-    return mix_policies(venv, agent, random_prob)
+    return mix_policies(action_space, agent, random_prob)
 
 
 def mix_policies(
@@ -103,7 +103,7 @@ def mix_policies(
 
     Args:
         policy1: first policy (can be a Callable, a stable baselines policy/algorithm
-            or a VecEnv for random actions)
+            or a gym.Space for random actions)
         policy2: same as policy1
         proportion: probability of selecting policy1, must be in [0, 1]
         seed (optional): the seed to use for the RNG that chooses between policies
