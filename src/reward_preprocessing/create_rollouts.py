@@ -39,7 +39,7 @@ def main(save_path: str, steps: int, test_steps: int):
         rewards[mode] = []
         dones[mode] = []
         dataset = get_dataset(create_env, steps=num_samples)
-        for transition, reward in tqdm(iter(dataset)):
+        for transition, reward in tqdm(dataset):
             states[mode].append(transition.state)
             actions[mode].append(transition.action)
             next_states[mode].append(transition.next_state)

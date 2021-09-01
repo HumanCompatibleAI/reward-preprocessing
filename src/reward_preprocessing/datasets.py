@@ -1,7 +1,7 @@
 """Module for datasets consisting of transition-reward pairs."""
 from pathlib import Path
 import random
-from typing import Callable, List, NamedTuple, Optional, Tuple
+from typing import Callable, NamedTuple, Optional, Sequence, Tuple
 import warnings
 
 import numpy as np
@@ -48,8 +48,8 @@ class MixedDataset(torch.utils.data.IterableDataset):
 
     def __init__(
         self,
-        datasets: List[torch.utils.data.IterableDataset],
-        weights: Optional[List[float]] = None,
+        datasets: Sequence[torch.utils.data.IterableDataset],
+        weights: Optional[Sequence[float]] = None,
         num: Optional[int] = None,
         seed: int = 0,
     ):
@@ -84,6 +84,10 @@ class MixedDataset(torch.utils.data.IterableDataset):
             self.yielded += 1
 
     def __len__(self):
+        """Maximum number of transitions in the dataset or None if infinite.
+
+        Warning: the actual number of transitions might be lower
+        if one of the constituent datasets is too small!"""
         return self.num
 
 
@@ -99,10 +103,6 @@ class StoredRewardData(torch.utils.data.Dataset):
             Doesn't need to contain the .npz extension.
         train: whether to use the training or test set.
         transform: transforms to apply
-        load_to_memory: whether to load the dataset to memory
-            or leave it on disk and read it from there on demand.
-            Default is to load to memory (which makes sense for small datasets).
-            If you use very large datasets, you may have to change that.
     """
 
     def __init__(
@@ -111,8 +111,6 @@ class StoredRewardData(torch.utils.data.Dataset):
         train: bool = True,
         transform: Optional[Callable] = None,
     ):
-        # If you change the data loading code here, also change it
-        # in get_worker_init_fn
         npz = np.load(path.with_suffix(".npz"))
         self.mode = "train" if train else "test"
         self.data = {
@@ -122,6 +120,13 @@ class StoredRewardData(torch.utils.data.Dataset):
             "rewards": npz[f"{self.mode}_rewards"],
             "dones": npz[f"{self.mode}_dones"],
         }
+        assert self.data["states"].shape == self.data["next_states"].shape
+        assert (
+            len(self.data["states"])
+            == len(self.data["actions"])
+            == len(self.data["rewards"])
+            == len(self.data["dones"])
+        )
         self.transform = transform
         self.state_shape = self.data["states"].shape[1:]
         self.action_shape = self.data["actions"].shape[1:]
@@ -201,6 +206,7 @@ class DynamicRewardData(torch.utils.data.IterableDataset):
             yield out
 
     def __len__(self):
+        """Number of transitions in the dataset or None if infinite."""
         return self.num
 
 
@@ -215,7 +221,7 @@ def to_torch(x: Tuple[Transition, float]) -> Tuple[Transition, torch.Tensor]:
 
 
 def collate_fn(
-    data: List[Tuple[Transition, torch.Tensor]]
+    data: Sequence[Tuple[Transition, torch.Tensor]]
 ) -> Tuple[Transition, torch.Tensor]:
     """Custom collate function for RewardData.
 
@@ -235,7 +241,7 @@ def collate_fn(
 
 
 def get_dynamic_dataset(
-    rollouts: List[RolloutConfig],
+    rollouts: Sequence[RolloutConfig],
     venv_factory: Callable[[], VecEnv],
     transform: Optional[Callable] = None,
     seed: int = 0,
@@ -243,16 +249,18 @@ def get_dynamic_dataset(
 ):
     datasets = []
     weights = []
-    for cfg in rollouts:
+    for i, cfg in enumerate(rollouts):
         # environments are seeded by DynamicRewardData, this will already
         # ensure they all have different seeds
         venv = venv_factory()
-        policy = get_policy(cfg.random_prob, cfg.agent_path, venv)
-        train_data = DynamicRewardData(venv, policy, transform=transform, seed=seed + 1)
+        policy = get_policy(cfg.random_prob, cfg.agent_path, venv.action_space)
+        train_data = DynamicRewardData(venv, policy, transform=transform, seed=seed + i)
         datasets.append(train_data)
         weights.append(cfg.weight)
 
-    return MixedDataset(datasets, weights, num, seed)
+    # maybe this is too paranoid but we've already used `seed` for the
+    # dynamic reward data, so we use `seed - 1` here
+    return MixedDataset(datasets, weights, num, seed - 1)
 
 
 def _get_stored_data_loaders(
@@ -292,7 +300,7 @@ def _get_dynamic_data_loaders(
     batch_size: int,
     seed: int,
     venv_factory: Callable[[], VecEnv],
-    rollouts: List[RolloutConfig],
+    rollouts: Sequence[RolloutConfig],
     num_train: Optional[int] = None,
     num_test: Optional[int] = None,
     transform: Optional[Callable] = None,
@@ -324,7 +332,7 @@ def get_data_loaders(
     seed: int = 0,
     data_path: Optional[str] = None,
     venv_factory: Optional[Callable[[], VecEnv]] = None,
-    rollouts: Optional[List[RolloutConfig]] = None,
+    rollouts: Optional[Sequence[RolloutConfig]] = None,
     num_train: Optional[int] = None,
     num_test: Optional[int] = None,
     transform: Optional[Callable] = None,

@@ -12,6 +12,7 @@ from typing import Any, Callable, Iterator, Optional, Tuple, Union
 import numpy as np
 from stable_baselines3.common.base_class import BaseAlgorithm
 from stable_baselines3.common.policies import BasePolicy
+from stable_baselines3.common.utils import check_for_correct_spaces
 from stable_baselines3.common.vec_env import VecEnv
 import torch
 
@@ -103,42 +104,30 @@ def get_transitions(
         )
 
     if isinstance(policy, BaseAlgorithm):
-        original_env = policy.env
-        policy.set_env(venv)
+        # check that the observation and action spaces of policy and environment match
+        check_for_correct_spaces(venv, policy.observation_space, policy.action_space)
 
-    # the try ... finally block is here so that if an exception occurs
-    # which is caught outside this function, the original environment is still
-    # restored
-    try:
-        states = venv.reset()
+    states = venv.reset()
 
-        num_sampled = 0
-        while num is None or num_sampled < num:
-            acts = get_actions(states)
-            next_states, rews, dones, infos = venv.step(acts)
+    num_sampled = 0
+    while num is None or num_sampled < num:
+        acts = get_actions(states)
+        next_states, rews, dones, infos = venv.step(acts)
 
-            for state, act, next_state, rew, done, info in zip(
-                states, acts, next_states, rews, dones, infos
-            ):
-                if done:
-                    # actual obs is inaccurate, so we use the one
-                    # inserted into step info by stable baselines wrapper
-                    real_ob = info["terminal_observation"]
-                else:
-                    real_ob = next_state
-
-                yield Transition(state, act, real_ob, done), rew
-                num_sampled += 1
-
-                if num is not None and num_sampled >= num:
-                    break
-
-            states = next_states
-    finally:
-        if isinstance(policy, BaseAlgorithm):
-            if original_env is not None:
-                policy.set_env(original_env)
+        for state, act, next_state, rew, done, info in zip(
+            states, acts, next_states, rews, dones, infos
+        ):
+            if done:
+                # actual obs is inaccurate, so we use the one
+                # inserted into step info by stable baselines wrapper
+                real_ob = info["terminal_observation"]
             else:
-                # This happens if the original policy didn't have an environment
-                # attached, then we remove the env again
-                policy.env = None
+                real_ob = next_state
+
+            yield Transition(state, act, real_ob, done), rew
+            num_sampled += 1
+
+            if num is not None and num_sampled >= num:
+                break
+
+        states = next_states

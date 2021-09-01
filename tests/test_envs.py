@@ -1,28 +1,14 @@
 import gym
 import numpy as np
+import pytest
 
 # register the Maze env
 import reward_preprocessing.env  # noqa: F401
 
 
-def test_empty_maze():
-    env = gym.make("EmptyMaze-v0")
-
-    obs = env.reset()
-    for _ in range(10):
-        action = env.action_space.sample()
-        obs, reward, done, info = env.step(action)
-        if done:
-            obs = env.reset()
-        assert isinstance(obs, np.ndarray)
-        assert isinstance(reward, float)
-        assert isinstance(done, bool)
-        assert isinstance(info, dict)
-    env.close()
-
-
-def test_mujoco():
-    env = gym.make("HalfCheetah-v3")
+@pytest.mark.parametrize("name", ["EmptyMaze-v0", "MountainCar-v0", "HalfCheetah-v2"])
+def test_env_creation(name):
+    env = gym.make(name)
 
     obs = env.reset()
     for _ in range(10):

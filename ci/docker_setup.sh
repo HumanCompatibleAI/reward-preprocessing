@@ -4,7 +4,7 @@
 # of the Docker image is used to finish the setup.
 
 # quit on errors, forbid undefined variables
-# set -euo pipefail
+set -euo pipefail
 
 cd /reward_preprocessing
 

@@ -74,7 +74,7 @@ def create_env(
     options: Mapping[str, Any] = {},
     stats_path: Optional[str] = None,
     n_envs: int = 1,
-    normalize: Optional[bool] = False,
+    normalize: bool = False,
     wrappers: Iterable[str] = [],
 ):
     # always wrap in a Monitor wrapper, which collects the returns and
