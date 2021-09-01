@@ -30,8 +30,8 @@ transition_ingredient = Ingredient("transition_visualization")
 @transition_ingredient.config
 def config():
     enabled = True
-    num = 6
-    num_samples = 250
+    num = 6  # number of transitions to plot
+    num_samples = 250  # number of transitions to sample (to select the max from)
     _ = locals()  # make flake8 happy
     del _
 

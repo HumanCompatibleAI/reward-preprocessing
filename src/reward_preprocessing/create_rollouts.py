@@ -5,11 +5,13 @@ from pathlib import Path
 
 import numpy as np
 from sacred import Experiment
+from tqdm import tqdm
 
 from reward_preprocessing.env import create_env, env_ingredient
-from reward_preprocessing.utils import use_rollouts
+from reward_preprocessing.utils import add_observers, use_rollouts
 
 ex = Experiment("create_rollouts", ingredients=[env_ingredient])
+add_observers(ex)
 _, get_dataset = use_rollouts(ex)
 
 
@@ -17,6 +19,7 @@ _, get_dataset = use_rollouts(ex)
 def config():
     # path where the dataset should be saved to (without .npz extension)
     save_path = ""
+    run_dir = "runs/rollouts"
     _ = locals()  # make flake8 happy
     del _
 
@@ -36,7 +39,7 @@ def main(save_path: str, steps: int, test_steps: int):
         rewards[mode] = []
         dones[mode] = []
         dataset = get_dataset(create_env, steps=num_samples)
-        for transition, reward in iter(dataset):
+        for transition, reward in tqdm(dataset):
             states[mode].append(transition.state)
             actions[mode].append(transition.action)
             next_states[mode].append(transition.next_state)
@@ -59,3 +62,4 @@ def main(save_path: str, steps: int, test_steps: int):
         test_rewards=np.array(rewards["test"]),
         test_dones=np.array(dones["test"]),
     )
+    ex.add_artifact(path)

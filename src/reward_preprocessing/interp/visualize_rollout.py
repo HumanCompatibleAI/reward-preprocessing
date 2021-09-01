@@ -16,7 +16,7 @@ rollout_ingredient = Ingredient("rollout_visualization")
 @rollout_ingredient.config
 def config():
     enabled = True
-    plot_shape = (4, 4)
+    plot_shape = (4, 4)  # number of frames along x and y axis
     _ = locals()  # make flake8 happy
     del _
 

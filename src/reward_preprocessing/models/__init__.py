@@ -7,7 +7,7 @@ Note that batches of Transitions are represented as a single
 Transition with batches in each of its fields for the purposes
 of model input. collate_fn in datasets.py takes care of this.
 """
-from .mlp_model import MlpRewardModel
+from .mlp_model import MlpRewardModel, SasRewardModel
 from .reward_model import RewardModel
 
-__all__ = ["MlpRewardModel", "RewardModel"]
+__all__ = ["MlpRewardModel", "RewardModel", "SasRewardModel"]

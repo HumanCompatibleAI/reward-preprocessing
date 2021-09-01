@@ -56,9 +56,12 @@ class MixedDataset(torch.utils.data.IterableDataset):
         super().__init__()
         self.datasets = datasets
         self.state_shape = datasets[0].state_shape
+        self.action_shape = datasets[0].action_shape
         for dataset in datasets:
             if dataset.state_shape != self.state_shape:
                 raise ValueError("All datasets must have matching state spaces.")
+            if dataset.action_shape != self.action_shape:
+                raise ValueError("All datasets must have matching action spaces.")
         self.weights = weights
         self.num = num
         self.yielded = 0
@@ -184,6 +187,7 @@ class DynamicRewardData(torch.utils.data.IterableDataset):
         self.deterministic_policy = deterministic_policy
         self.num = num
         self.state_shape = venv.observation_space.shape
+        self.action_shape = venv.action_space.shape
 
         # seed environment and policy
         self.venv.seed(seed)

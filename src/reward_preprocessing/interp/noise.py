@@ -13,10 +13,10 @@ noise_ingredient = Ingredient("noise", ingredients=[env_ingredient])
 @noise_ingredient.config
 def config():
     enabled = True
-    std = 1.0
-    mean = 0.0
-    potential = None
-    potential_options = {}
+    std = 1.0  # standard deviation of the potential weights
+    mean = 0.0  # mean of the potential weights
+    potential = None  # class name of the potential
+    potential_options = {}  # kwargs for the potential (other than gamma)
 
     _ = locals()  # make flake8 happy
     del _

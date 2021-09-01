@@ -25,19 +25,19 @@ add_observers(ex)
 
 @ex.config
 def config():
-    steps = 100000
+    steps = 100000  # number of training environment steps
     # If empty, the trained agent is only saved via Sacred observers
     # (you can still extract it manually later).
     # But if you already know you will need the trained model, then
     # set this to a filepath where you want the model to be stored,
     # without an extension (but including a filename).
-    save_path = ""
-    num_frames = 100
+    save_path = ""  # path to save the agent to (without extension)
+    num_frames = 100  # number of video frames to generate at the end
     run_dir = "runs/agent"
-    eval_episodes = 5
-    final_eval_episodes = 0
-    ppo_options = {}
-    wb = {}
+    eval_episodes = 5  # number of episodes to use during regular evaluation
+    final_eval_episodes = 0  # number of episodes to evaluate for at the end
+    ppo_options = {}  # kwargs for stable-baselines' PPO class
+    wb = {}  # kwargs for wandb.init()
     eval_every = 10000  # eval every n steps. Set to 0 to disable.
 
     _ = locals()  # make flake8 happy

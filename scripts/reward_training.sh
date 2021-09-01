@@ -11,10 +11,10 @@ else
     MODEL_TYPE=ss
 fi
 
-exec pipenv run python src/reward_preprocessing/interpret.py with \
-    model_path="results/models/$env_name.pt" \
-    agent_path="results/agents/$env_name" \
-    sparsify.data_path="results/data/$env_name" \
+exec pipenv run python src/reward_preprocessing/train_reward_model.py with \
+    data_path="results/data/$env_name" \
     model_type="$MODEL_TYPE" \
+    save_path="results/models/$env_name" \
+    eval_every=1 \
     "env.$env_name" \
     "${@:2}"
