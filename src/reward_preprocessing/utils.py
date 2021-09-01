@@ -10,7 +10,8 @@ from stable_baselines3.common.vec_env.base_vec_env import VecEnv, VecEnvObs
 
 from reward_preprocessing.datasets import (
     RolloutConfig,
-    get_data_loaders,
+    StoredRewardData,
+    get_dataloader,
     get_dynamic_dataset,
     to_torch,
 )
@@ -82,49 +83,61 @@ def use_rollouts(
     ing.config(config)
 
     def random_rollouts():
-        rollouts = [RolloutConfig(random_prob=1)]
+        rollouts = [RolloutConfig(random_prob=1, name="random")]
         _ = locals()  # make flake8 happy
         del _
 
     ing.named_config(random_rollouts)
 
-    def _get_data_loaders(
-        env,
+    def _get_dataloader(
+        venv_factory,
         batch_size,
         num_workers,
         _seed,
         data_path,
         rollouts,
         steps,
-        test_steps,
+        mode="train",
     ):
         # turn the rollout configs from ReadOnlyLists into RolloutConfigs
         # (Sacred turns the namedtuples into lists)
         if rollouts is not None:
             rollouts = [RolloutConfig(*x) for x in rollouts]
-        return get_data_loaders(
+        return get_dataloader(
             batch_size,
             num_workers,
             _seed,
             data_path,
-            env,
+            venv_factory,
             rollouts,
             steps,
-            test_steps,
             transform=to_torch,
+            mode=mode,
         )
 
     def _get_dataset(
-        venv_factory,
         _seed,
         rollouts,
         steps,
+        data_path,
+        venv_factory=None,
         transform=None,
+        mode="train",
     ):
         # turn the rollout configs from ReadOnlyLists into RolloutConfigs
         # (Sacred turns the namedtuples into lists)
         if rollouts is not None:
             rollouts = [RolloutConfig(*x) for x in rollouts]
+        if data_path is not None:
+            if rollouts is not None:
+                raise ValueError("'rollouts' and 'data_path' mustn't both be set")
+            return StoredRewardData(
+                Path(data_path), num=steps, transform=transform, mode=mode
+            )
+
+        if rollouts is None:
+            raise ValueError("One of 'rollouts' and 'data_path' must be set")
+
         return get_dynamic_dataset(
             venv_factory=venv_factory,
             rollouts=rollouts,
@@ -133,7 +146,7 @@ def use_rollouts(
             transform=transform,
         )
 
-    return ing.capture(_get_data_loaders), ing.capture(_get_dataset)
+    return ing.capture(_get_dataloader), ing.capture(_get_dataset)
 
 
 def sacred_save_fig(fig: plt.Figure, run, filename: str) -> None:
@@ -149,6 +162,7 @@ def sacred_save_fig(fig: plt.Figure, run, filename: str) -> None:
     """
     with tempfile.TemporaryDirectory() as dirname:
         plot_path = Path(dirname) / f"{filename}.pdf"
+        fig.set_tight_layout(True)
         fig.savefig(plot_path)
         run.add_artifact(plot_path)
 

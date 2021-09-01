@@ -1,6 +1,3 @@
-from typing import Tuple
-
-import gym
 import matplotlib.pyplot as plt
 import numpy as np
 from sacred import Ingredient
@@ -8,11 +5,10 @@ import torch
 
 from reward_preprocessing.env.env_ingredient import create_env, env_ingredient
 from reward_preprocessing.models import RewardModel
-from reward_preprocessing.transition import get_transitions
 from reward_preprocessing.utils import sacred_save_fig, use_rollouts
 
 reward_ingredient = Ingredient("rewards", ingredients=[env_ingredient])
-get_dataloaders, _ = use_rollouts(reward_ingredient)
+get_dataloader, _ = use_rollouts(reward_ingredient)
 
 
 @reward_ingredient.config
@@ -24,6 +20,7 @@ def config():
     min_reward = -10  # lower bound for the histogram
     max_reward = 10  # upper bound for the histogram
     bins = 20  # number of bins for the histogram
+    rollout_steps = 1000  # length of the plotted rollouts
     _ = locals()  # make flake8 happy
     del _
 
@@ -36,13 +33,13 @@ def plot_rewards(
     bins: int,
     min_reward: float,
     max_reward: float,
+    rollout_steps: int,
     _run,
 ) -> None:
     """Visualizes a reward model by rendering the distribution and history
     of rewards."""
     if not enabled:
         return
-    # we plot a histogram and rewards over time
     fig, ax = plt.subplots(1, 1, figsize=(6, 6))
 
     bin_edges = np.linspace(min_reward, max_reward, bins + 1)
@@ -50,7 +47,7 @@ def plot_rewards(
     actual_hist = np.zeros(bins, dtype=int)
     predicted_hist = np.zeros(bins, dtype=int)
 
-    dataloader, _ = get_dataloaders(create_env)
+    dataloader = get_dataloader(create_env)
     for transitions, actual_rewards in dataloader:
         with torch.no_grad():
             predicted_rewards = model(transitions.to(device))
@@ -78,4 +75,39 @@ def plot_rewards(
     ax.set(title="Reward distribution")
     ax.legend()
 
-    sacred_save_fig(fig, _run, "rewards")
+    sacred_save_fig(fig, _run, "reward_histogram")
+
+    fig, ax = plt.subplots(3, 1, figsize=(4, 12))
+
+    for i, mode in enumerate(["expert", "mixed", "random"]):
+        all_actual_rewards = np.array([])
+        all_predicted_rewards = np.array([])
+        dataloader = get_dataloader(
+            create_env, mode=f"rollout_{mode}", steps=rollout_steps
+        )
+
+        for transitions, actual_rewards in dataloader:
+            all_actual_rewards = np.concatenate(
+                [all_actual_rewards, actual_rewards.cpu().numpy()]
+            )
+            with torch.no_grad():
+                predicted_rewards = model(transitions.to(device))
+            all_predicted_rewards = np.concatenate(
+                [all_predicted_rewards, predicted_rewards.cpu().numpy()]
+            )
+
+        ax[i].plot(
+            all_actual_rewards,
+            label="Original reward",
+        )
+        ax[i].plot(
+            all_predicted_rewards,
+            label="Model output",
+        )
+        ax[i].set_ylim(top=max_reward, bottom=min_reward)
+        ax[i].set_xlabel("time step")
+        ax[i].set_ylabel("reward")
+        ax[i].set(title=mode)
+        ax[i].legend()
+
+    sacred_save_fig(fig, _run, "rewards_over_time")

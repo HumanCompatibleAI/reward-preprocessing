@@ -11,7 +11,7 @@ from reward_preprocessing.preprocessing.potential_shaping import instantiate_pot
 from reward_preprocessing.utils import get_env_name, sacred_save_fig, use_rollouts
 
 sparsify_ingredient = Ingredient("sparsify", ingredients=[env_ingredient])
-get_data_loaders, _ = use_rollouts(sparsify_ingredient)
+get_dataloader, _ = use_rollouts(sparsify_ingredient)
 
 
 @sparsify_ingredient.config
@@ -56,7 +56,7 @@ def sparsify(
         env_name, potential, model=model, gamma=gamma, **potential_options
     ).to(device)
 
-    train_loader, _ = get_data_loaders(create_env, num_workers=0, test_steps=0)
+    train_loader = get_dataloader(create_env, num_workers=0)
 
     # the weights of the original model are automatically frozen,
     # we only train the final potential shaping
@@ -98,7 +98,7 @@ def sparsify(
                         step=step,
                     )
                 else:
-                    print(f"Loss: {running_loss:.3E}")
+                    print(f"Loss: {running_loss / log_every:.3E}")
                 running_loss = 0.0
 
     try:

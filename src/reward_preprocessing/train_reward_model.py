@@ -13,7 +13,7 @@ from reward_preprocessing.utils import add_observers, use_rollouts
 
 ex = Experiment("train_reward_model", ingredients=[env_ingredient])
 add_observers(ex)
-get_data_loaders, _ = use_rollouts(ex)
+get_dataloader, _ = use_rollouts(ex)
 
 
 @ex.config
@@ -53,7 +53,8 @@ def main(
     eval_every: int,
     _config,
 ):
-    train_loader, test_loader = get_data_loaders(create_env)
+    train_loader = get_dataloader(create_env)
+    test_loader = get_dataloader(create_env, mode="test")
 
     if torch.cuda.is_available():
         device = torch.device("cuda")

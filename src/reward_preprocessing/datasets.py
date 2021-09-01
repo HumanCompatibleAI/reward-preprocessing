@@ -17,6 +17,7 @@ from reward_preprocessing.transition import Transition, get_transitions
 class RolloutConfig(NamedTuple):
     random_prob: float
     agent_path: Optional[str] = None
+    name: str = "<unnamed>"
     weight: float = 1.0
 
 
@@ -101,24 +102,29 @@ class StoredRewardData(torch.utils.data.Dataset):
     Args:
         path: path to the stored dataset (in .npz format).
             Doesn't need to contain the .npz extension.
-        train: whether to use the training or test set.
+        mode: the mode of the dataset to load. Can be "train" (default),
+            "test" or "rollout_{i}" where i is one of the available
+            contiguous rollouts
+        num: if set, restrict the number of samples taken from
+            the dataset to this number
         transform: transforms to apply
     """
 
     def __init__(
         self,
         path: Path,
-        train: bool = True,
+        mode: str = "train",
+        num: Optional[int] = None,
         transform: Optional[Callable] = None,
     ):
         npz = np.load(path.with_suffix(".npz"))
-        self.mode = "train" if train else "test"
+        self.mode = mode
         self.data = {
-            "states": npz[f"{self.mode}_states"],
-            "actions": npz[f"{self.mode}_actions"],
-            "next_states": npz[f"{self.mode}_next_states"],
-            "rewards": npz[f"{self.mode}_rewards"],
-            "dones": npz[f"{self.mode}_dones"],
+            "states": npz[f"{self.mode}_states"][:num],
+            "actions": npz[f"{self.mode}_actions"][:num],
+            "next_states": npz[f"{self.mode}_next_states"][:num],
+            "rewards": npz[f"{self.mode}_rewards"][:num],
+            "dones": npz[f"{self.mode}_dones"][:num],
         }
         assert self.data["states"].shape == self.data["next_states"].shape
         assert (
@@ -127,6 +133,12 @@ class StoredRewardData(torch.utils.data.Dataset):
             == len(self.data["rewards"])
             == len(self.data["dones"])
         )
+
+        if num is not None and num > len(self):
+            warnings.warn(
+                f"Fewer samples than asked for are available (mode: {self.mode})."
+            )
+
         self.transform = transform
         self.state_shape = self.data["states"].shape[1:]
         self.action_shape = self.data["actions"].shape[1:]
@@ -263,80 +275,64 @@ def get_dynamic_dataset(
     return MixedDataset(datasets, weights, num, seed - 1)
 
 
-def _get_stored_data_loaders(
+def _get_stored_dataloader(
     batch_size: int,
     num_workers: int,
     data_path: str,
-    num_train: Optional[int] = None,
-    num_test: Optional[int] = None,
+    num: Optional[int] = None,
     transform: Optional[Callable] = None,
-) -> Tuple[torch.utils.data.DataLoader, torch.utils.data.DataLoader]:
+    mode: str = "train",
+) -> torch.utils.data.DataLoader:
     path = Path(data_path)
-    train_data = StoredRewardData(path, transform=transform, train=True)
-    test_data = StoredRewardData(path, transform=transform, train=False)
-    if num_train is not None and num_train > len(train_data):
-        warnings.warn("Fewer training samples than asked for are available.")
-    if num_test is not None and num_test > len(test_data):
-        warnings.warn("Fewer test samples than asked for are available.")
+    dataset = StoredRewardData(path, transform=transform, mode=mode, num=num)
 
-    train_loader = torch.utils.data.DataLoader(
-        train_data,
+    dataloader = torch.utils.data.DataLoader(
+        dataset,
         batch_size=batch_size,
-        shuffle=True,
+        shuffle=(mode == "train"),
         num_workers=num_workers,
         collate_fn=collate_fn,
     )
-    test_loader = torch.utils.data.DataLoader(
-        test_data,
-        batch_size=batch_size,
-        shuffle=False,
-        num_workers=num_workers,
-        collate_fn=collate_fn,
-    )
-    return train_loader, test_loader
+    return dataloader
 
 
-def _get_dynamic_data_loaders(
+def _get_dynamic_dataloader(
     batch_size: int,
     seed: int,
     venv_factory: Callable[[], VecEnv],
     rollouts: Sequence[RolloutConfig],
-    num_train: Optional[int] = None,
-    num_test: Optional[int] = None,
+    num: Optional[int] = None,
     transform: Optional[Callable] = None,
-) -> Tuple[torch.utils.data.DataLoader, torch.utils.data.DataLoader]:
-    if num_train is None or num_test is None:
+    mode: str = "train",
+) -> torch.utils.data.DataLoader:
+    if num is None:
         warnings.warn("No number of samples given, will return an infinite DataLoader.")
 
-    train_data = get_dynamic_dataset(rollouts, venv_factory, transform, seed, num_train)
-    test_data = get_dynamic_dataset(
-        rollouts, venv_factory, transform, seed + 1, num_test
-    )
+    # ensure that the test dataloader uses a different seed
+    if mode == "test":
+        seed += 1
 
-    train_loader = torch.utils.data.DataLoader(
+    train_data = get_dynamic_dataset(rollouts, venv_factory, transform, seed, num)
+
+    dataloader = torch.utils.data.DataLoader(
         train_data,
         batch_size=batch_size,
         collate_fn=collate_fn,
     )
-    test_loader = torch.utils.data.DataLoader(
-        test_data,
-        batch_size=batch_size,
-        collate_fn=collate_fn,
-    )
-    return train_loader, test_loader
+    return dataloader
 
 
-def get_data_loaders(
+def get_dataloader(
     batch_size: int,
     num_workers: int = 0,
     seed: int = 0,
     data_path: Optional[str] = None,
     venv_factory: Optional[Callable[[], VecEnv]] = None,
     rollouts: Optional[Sequence[RolloutConfig]] = None,
-    num_train: Optional[int] = None,
-    num_test: Optional[int] = None,
+    num: Optional[int] = None,
     transform: Optional[Callable] = None,
-) -> Tuple[torch.utils.data.DataLoader, torch.utils.data.DataLoader]:
+    mode: str = "train",
+) -> torch.utils.data.DataLoader:
     """Create train and test Pytorch dataloaders for transitions.
 
     The underlying Dataset will be either StoredRewardData or DynamicRewardData,
@@ -344,8 +340,7 @@ def get_data_loaders(
 
     If you want to use a stored dataset, pass a `data_path`. Otherwise,
     pass a `venv`, a `rollouts` list of configurations
-    and optionally `num_train` and `num_test`
-    (to get a finite dataloader).
+    and optionally `num` (to get a finite dataloader).
 
     Args:
         batch_size (int): batch size for the dataloaders
@@ -358,8 +353,7 @@ def get_data_loaders(
             to be used whenever it is called. Seeding will happen automatically.
         rollouts (list, optional): a list of RolloutConfigs describing
             the different policies to use and how to weight them.
-        num_train (int, optional): number of training samples.
-        num_test (int, optional): number of test samples.
+        num (int, optional): number of samples.
         transform (Callable, optional): transforms to pass on to the Dataset.
 
     Returns:
@@ -373,8 +367,8 @@ def get_data_loaders(
                 "Both policies and path to a dataset were given, can only use one."
             )
 
-        return _get_stored_data_loaders(
-            batch_size, num_workers, data_path, num_train, num_test, transform
+        return _get_stored_dataloader(
+            batch_size, num_workers, data_path, num, transform, mode
         )
 
     # if no path is given, we return a dataloader that generates samples
@@ -390,6 +384,6 @@ def get_data_loaders(
             "Neither rollout configuration nor dataset path are given, "
             "need one of them."
         )
-    return _get_dynamic_data_loaders(
-        batch_size, seed, venv_factory, rollouts, num_train, num_test, transform
+    return _get_dynamic_dataloader(
+        batch_size, seed, venv_factory, rollouts, num, transform, mode
     )
