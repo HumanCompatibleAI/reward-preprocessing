@@ -3,12 +3,12 @@ import math
 from queue import PriorityQueue
 from typing import Tuple
 
-import gym
 import matplotlib.pyplot as plt
 import numpy as np
 from sacred import Ingredient
 import torch
 
+from reward_preprocessing.env.env_ingredient import create_env, env_ingredient
 from reward_preprocessing.models import RewardModel
 from reward_preprocessing.transition import get_transitions
 from reward_preprocessing.utils import sacred_save_fig
@@ -24,7 +24,9 @@ class TransitionData:
     img: Tuple[np.ndarray, np.ndarray] = field(compare=False)
 
 
-transition_ingredient = Ingredient("transition_visualization")
+transition_ingredient = Ingredient(
+    "transition_visualization", ingredients=[env_ingredient]
+)
 
 
 @transition_ingredient.config
@@ -39,7 +41,6 @@ def config():
 @transition_ingredient.capture
 def visualize_transitions(
     model: RewardModel,
-    env: gym.Env,
     device,
     num: int,
     num_samples: int,
@@ -56,6 +57,7 @@ def visualize_transitions(
     highest = PriorityQueue()
     lowest = PriorityQueue()
     random = PriorityQueue()
+    env = create_env(n_envs=1)
     env.reset()
     img = env.render(mode="rgb_array")
     for i, (transition, actual_reward) in enumerate(

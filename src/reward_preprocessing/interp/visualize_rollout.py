@@ -1,16 +1,16 @@
 from typing import Tuple
 
-import gym
 import matplotlib.pyplot as plt
 import numpy as np
 from sacred import Ingredient
 import torch
 
+from reward_preprocessing.env.env_ingredient import create_env, env_ingredient
 from reward_preprocessing.models import RewardModel
 from reward_preprocessing.transition import get_transitions
 from reward_preprocessing.utils import sacred_save_fig
 
-rollout_ingredient = Ingredient("rollout_visualization")
+rollout_ingredient = Ingredient("rollout_visualization", ingredients=[env_ingredient])
 
 
 @rollout_ingredient.config
@@ -24,7 +24,6 @@ def config():
 @rollout_ingredient.capture
 def visualize_rollout(
     model: RewardModel,
-    env: gym.Env,
     device,
     plot_shape: Tuple[int, int],
     enabled: bool,
@@ -38,6 +37,8 @@ def visualize_rollout(
     n_rows, n_cols = plot_shape
     fig, ax = plt.subplots(n_rows, n_cols, figsize=(4 * n_rows, 4 * n_cols))
     ax = ax.reshape(-1)
+
+    env = create_env(n_envs=1)
     for i, (transition, actual_reward) in enumerate(
         get_transitions(env, agent, num=n_rows * n_cols)
     ):
