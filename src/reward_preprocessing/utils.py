@@ -1,7 +1,7 @@
 import importlib
 from pathlib import Path
 import tempfile
-from typing import Callable, List, Tuple
+from typing import Callable, Sequence, Tuple
 
 import matplotlib.pyplot as plt
 import sacred
@@ -31,7 +31,7 @@ class ContinuousVideoRecorder(VecVideoRecorder):
 
 
 class ComposeTransforms:
-    def __init__(self, transforms: List[Callable]):
+    def __init__(self, transforms: Sequence[Callable]):
         self.transforms = transforms
 
     def __call__(self, x):

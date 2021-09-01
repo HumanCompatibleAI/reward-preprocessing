@@ -1,7 +1,7 @@
 """Module for datasets consisting of transition-reward pairs."""
 from pathlib import Path
 import random
-from typing import Callable, List, NamedTuple, Optional, Tuple
+from typing import Callable, NamedTuple, Optional, Sequence, Tuple
 import warnings
 
 import numpy as np
@@ -230,7 +230,7 @@ def get_worker_init_fn(path: Path, load_to_memory: bool = True):
 
 
 def collate_fn(
-    data: List[Tuple[Transition, torch.Tensor]]
+    data: Sequence[Tuple[Transition, torch.Tensor]]
 ) -> Tuple[Transition, torch.Tensor]:
     """Custom collate function for RewardData.
 
@@ -313,7 +313,7 @@ def _get_dynamic_data_loaders(
     batch_size: int,
     seed: int,
     venv_factory: Callable[[], VecEnv],
-    rollouts: List[RolloutConfig],
+    rollouts: Sequence[RolloutConfig],
     num_train: Optional[int] = None,
     num_test: Optional[int] = None,
     transform: Optional[Callable] = None,
@@ -345,7 +345,7 @@ def get_data_loaders(
     seed: int = 0,
     data_path: Optional[str] = None,
     venv_factory: Optional[Callable[[], VecEnv]] = None,
-    rollouts: Optional[List[RolloutConfig]] = None,
+    rollouts: Optional[Sequence[RolloutConfig]] = None,
     num_train: Optional[int] = None,
     num_test: Optional[int] = None,
     transform: Optional[Callable] = None,
