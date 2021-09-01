@@ -77,7 +77,7 @@ def main(
         # environments are seeded by DynamicRewardData, this will already
         # ensure they all have different seeds
         venv = create_env(n_envs=1)
-        policy = get_policy(cfg.random_prob, cfg.agent_path, venv)
+        policy = get_policy(cfg.random_prob, cfg.agent_path, venv.action_space)
         dataset = DynamicRewardData(venv, policy, seed=_seed + i, num=rollout_steps)
         mode = f"rollout_{cfg.name}"
 
