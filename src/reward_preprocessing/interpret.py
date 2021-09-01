@@ -8,7 +8,9 @@ import wandb
 
 from reward_preprocessing.env import create_env, env_ingredient
 from reward_preprocessing.interp import (
+    add_fixed_potential,
     add_noise_potential,
+    fixed_ingredient,
     noise_ingredient,
     plot_rewards,
     reward_ingredient,
@@ -29,6 +31,7 @@ ex = Experiment(
         rollout_ingredient,
         sparsify_ingredient,
         noise_ingredient,
+        fixed_ingredient,
         transition_ingredient,
         reward_ingredient,
     ],
@@ -90,6 +93,7 @@ def main(
         )
         use_wandb = True
 
+    model = add_fixed_potential(model, gamma)
     model = add_noise_potential(model, gamma)
     model = sparsify(model, device=device, gamma=gamma, use_wandb=use_wandb)
     model.eval()

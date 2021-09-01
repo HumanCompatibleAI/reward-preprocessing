@@ -17,6 +17,7 @@ the interpret.py script and the user can decide which ones to
 use via CLI arguments.
 """
 
+from .fixed_processor import add_fixed_potential, fixed_ingredient
 from .noise import add_noise_potential, noise_ingredient
 from .plot_rewards import plot_rewards, reward_ingredient
 from .sparsify import sparsify, sparsify_ingredient
@@ -32,6 +33,8 @@ __all__ = [
     "add_noise_potential",
     "visualize_transitions",
     "transition_ingredient",
+    "fixed_ingredient",
+    "add_fixed_potential",
     "reward_ingredient",
     "plot_rewards",
 ]
