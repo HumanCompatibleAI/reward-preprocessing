@@ -78,7 +78,7 @@ def main(
         )
     else:
         raise ValueError(f"Unknown model type '{model_type}', expected 'ss' or 'sas'.")
-    model.load_state_dict(torch.load(model_path))
+    model.load_state_dict(torch.load(model_path, map_location=device))
 
     use_wandb = False
     if wb:
