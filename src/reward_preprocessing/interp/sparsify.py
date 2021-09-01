@@ -1,24 +1,20 @@
 from typing import Any, Mapping
-import warnings
 
 from sacred import Ingredient
 import torch
 
-from reward_preprocessing.datasets import get_data_loaders, to_torch
 from reward_preprocessing.env import create_env, env_ingredient
 from reward_preprocessing.models import RewardModel
 from reward_preprocessing.preprocessing.potential_shaping import instantiate_potential
-from reward_preprocessing.utils import get_env_name, sacred_save_fig
+from reward_preprocessing.utils import get_env_name, sacred_save_fig, use_rollouts
 
 sparsify_ingredient = Ingredient("sparsify", ingredients=[env_ingredient])
+get_data_loaders, _ = use_rollouts(sparsify_ingredient)
 
 
 @sparsify_ingredient.config
 def config():
     enabled = True
-    steps = 100000
-    batch_size = 32
-    rollouts = "random"
     potential = None
     potential_options = {}
     lr = 0.01
@@ -36,58 +32,26 @@ def sparsify(
     device,
     gamma: float,
     enabled: bool,
-    steps: int,
     batch_size: int,
     lr: float,
     lr_decay_rate: float,
     lr_decay_every: int,
     potential_options: Mapping[str, Any],
     log_every: int,
-    rollouts: str,
     potential: str,
     _run,
-    agent=None,
 ) -> RewardModel:
     if not enabled:
         return model
 
     env = create_env()
 
-    if rollouts == "random":
-        agent = None
-    elif rollouts == "expert":
-        if agent is None:
-            raise ValueError(
-                "sparsify didn't receive an agent, expert rollouts can't be used"
-            )
-        if agent.gamma != gamma:
-            # We want to allow setting a different gamma value
-            # because that can be useful for quick experimentation.
-            # But the user should be aware of that.
-            warnings.warn(
-                "Agent was trained with different gamma value "
-                "than the one used for potential shaping."
-            )
-    else:
-        raise ValueError(
-            f"Invalid value {rollouts} for sparsify.rollouts. "
-            "Valid options are 'random' and 'expert'."
-        )
-
     env_name = get_env_name(env)
     model = instantiate_potential(
         env_name, potential, model=model, gamma=gamma, **potential_options
     ).to(device)
 
-    train_loader, _ = get_data_loaders(
-        batch_size=batch_size,
-        num_workers=0,
-        venv=env,
-        policy=agent,
-        num_train=steps,
-        num_test=0,
-        transform=to_torch,
-    )
+    train_loader, _ = get_data_loaders(create_env, num_workers=0, test_steps=0)
 
     # the weights of the original model are automatically frozen,
     # we only train the final potential shaping

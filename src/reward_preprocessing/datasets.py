@@ -1,6 +1,7 @@
 """Module for datasets consisting of transition-reward pairs."""
 from pathlib import Path
-from typing import Callable, List, Optional, Tuple
+import random
+from typing import Callable, NamedTuple, Optional, Sequence, Tuple
 import warnings
 
 import numpy as np
@@ -9,7 +10,82 @@ from stable_baselines3.common.policies import BasePolicy
 from stable_baselines3.common.vec_env import VecEnv
 import torch
 
+from reward_preprocessing.policy import get_policy
 from reward_preprocessing.transition import Transition, get_transitions
+
+
+class RolloutConfig(NamedTuple):
+    random_prob: float
+    agent_path: Optional[str] = None
+    weight: float = 1.0
+
+
+class MixedDataset(torch.utils.data.IterableDataset):
+    """Combine different IterableDatasets in a weighted mix.
+
+    This is somewhat similar to Pytorch's ChainDataset, but it will
+    mix the order of datasets randomly and it will stop as soon as
+    one dataset is exhausted (so it's not guaranteed to return all
+    items in all datasets). This is done to avoid biasing the results
+    towards larger datasets.
+
+    The recommended way of using this class together with DynamicRewardData
+    is to set num=None in each of the DynamicRewardData instances
+    and then set num only for this class (if desired at all).
+    This will give a dataset of a fixed size, which can
+    also be accessed with len(...).
+
+    Args:
+        datasets: list of iterable-style datasets
+        weights: weights for each of the datasets. If None (default),
+            all datasets are weighted equally.
+        num: maximum number of elements to return. If None (default),
+            don't restrict the dataset size. The iteration will then
+            either stop if a dataset is exhausted or never (if all
+            datasets are infinite).
+        seed: seed for the internal RNG
+    """
+
+    def __init__(
+        self,
+        datasets: Sequence[torch.utils.data.IterableDataset],
+        weights: Optional[Sequence[float]] = None,
+        num: Optional[int] = None,
+        seed: int = 0,
+    ):
+        super().__init__()
+        self.datasets = datasets
+        self.state_shape = datasets[0].state_shape
+        for dataset in datasets:
+            if dataset.state_shape != self.state_shape:
+                raise ValueError("All datasets must have matching state spaces.")
+        self.weights = weights
+        self.num = num
+        self.yielded = 0
+        self.rng = random.Random(seed)
+
+    def __iter__(self):
+        # if self.num is None, then we just go until a dataset
+        # is empty (or forever if they are all infinite).
+        # Otherwise, we stop after returning self.num results
+        iters = [iter(d) for d in self.datasets]
+        while self.num is None or self.yielded < self.num:
+            # pick a dataset at random
+            iterator = self.rng.choices(iters, self.weights)[0]
+            # This may raise a StopIteration exception if the dataset
+            # is emptied. But that's what we want: as soon as one
+            # of the datasets is empty and is selected,
+            # this MixedDataset should also stop the iteration
+            # in order to avoid bias.
+            yield next(iterator)
+            self.yielded += 1
+
+    def __len__(self):
+        """Maximum number of transitions in the dataset or None if infinite.
+
+        Warning: the actual number of transitions might be lower
+        if one of the constituent datasets is too small!"""
+        return self.num
 
 
 class StoredRewardData(torch.utils.data.Dataset):
@@ -115,7 +191,7 @@ class DynamicRewardData(torch.utils.data.IterableDataset):
         # itself, which is important if we use randomly sampled actions
         self.venv.action_space.np_random.seed(seed)
         if isinstance(self.policy, (BasePolicy, BaseAlgorithm)):
-            self.policy.set_random_seed(seed)
+            self.policy.set_random_seed(seed)  # type: ignore
 
     def __iter__(self):
         for out in get_transitions(
@@ -124,6 +200,10 @@ class DynamicRewardData(torch.utils.data.IterableDataset):
             if self.transform:
                 out = self.transform(out)
             yield out
+
+    def __len__(self):
+        """Number of transitions in the dataset or None if infinite."""
+        return self.num
 
 
 def to_torch(x: Tuple[Transition, float]) -> Tuple[Transition, torch.Tensor]:
@@ -137,7 +217,7 @@ def to_torch(x: Tuple[Transition, float]) -> Tuple[Transition, torch.Tensor]:
 
 
 def collate_fn(
-    data: List[Tuple[Transition, torch.Tensor]]
+    data: Sequence[Tuple[Transition, torch.Tensor]]
 ) -> Tuple[Transition, torch.Tensor]:
     """Custom collate function for RewardData.
 
@@ -154,6 +234,29 @@ def collate_fn(
         ),
         torch.stack([r for t, r in data]),
     )
+
+
+def get_dynamic_dataset(
+    rollouts: Sequence[RolloutConfig],
+    venv_factory: Callable[[], VecEnv],
+    transform: Optional[Callable] = None,
+    seed: int = 0,
+    num: Optional[int] = None,
+):
+    datasets = []
+    weights = []
+    for i, cfg in enumerate(rollouts):
+        # environments are seeded by DynamicRewardData, this will already
+        # ensure they all have different seeds
+        venv = venv_factory()
+        policy = get_policy(cfg.random_prob, cfg.agent_path, venv.action_space)
+        train_data = DynamicRewardData(venv, policy, transform=transform, seed=seed + i)
+        datasets.append(train_data)
+        weights.append(cfg.weight)
+
+    # maybe this is too paranoid but we've already used `seed` for the
+    # dynamic reward data, so we use `seed - 1` here
+    return MixedDataset(datasets, weights, num, seed - 1)
 
 
 def _get_stored_data_loaders(
@@ -192,19 +295,18 @@ def _get_stored_data_loaders(
 def _get_dynamic_data_loaders(
     batch_size: int,
     seed: int,
-    venv: VecEnv,
-    policy=None,
+    venv_factory: Callable[[], VecEnv],
+    rollouts: Sequence[RolloutConfig],
     num_train: Optional[int] = None,
     num_test: Optional[int] = None,
     transform: Optional[Callable] = None,
 ) -> Tuple[torch.utils.data.DataLoader, torch.utils.data.DataLoader]:
     if num_train is None or num_test is None:
         warnings.warn("No number of samples given, will return an infinite DataLoader.")
-    train_data = DynamicRewardData(
-        venv, policy, num=num_train, transform=transform, seed=seed
-    )
-    test_data = DynamicRewardData(
-        venv, policy, num=num_test, transform=transform, seed=seed
+
+    train_data = get_dynamic_dataset(rollouts, venv_factory, transform, seed, num_train)
+    test_data = get_dynamic_dataset(
+        rollouts, venv_factory, transform, seed + 1, num_test
     )
 
     train_loader = torch.utils.data.DataLoader(
@@ -225,8 +327,8 @@ def get_data_loaders(
     num_workers: int = 0,
     seed: int = 0,
     data_path: Optional[str] = None,
-    venv: Optional[VecEnv] = None,
-    policy=None,
+    venv_factory: Optional[Callable[[], VecEnv]] = None,
+    rollouts: Optional[Sequence[RolloutConfig]] = None,
     num_train: Optional[int] = None,
     num_test: Optional[int] = None,
     transform: Optional[Callable] = None,
@@ -237,7 +339,8 @@ def get_data_loaders(
     depending on the arguments passed to this function.
 
     If you want to use a stored dataset, pass a `data_path`. Otherwise,
-    pass a `venv` and optionally a `policy` and `num_train`, `num_test`
+    pass a `venv`, a `rollouts` list of configurations
+    and optionally `num_train` and `num_test`
     (to get a finite dataloader).
 
     Args:
@@ -246,10 +349,11 @@ def get_data_loaders(
         seed (int, optional): random seed for env and policy, only relevant if
             dynamic data is used.
         data_path (str, optional): path to a stored dataset for StoredRewardData.
-        venv (VecEnv, optional): environment to use for rollouts, only required if
-            `data_path` is None.
-        policy (optional): policy, see `get_transitions` documentation for possible
-            values. If left to None, random actions are chosen.
+        venv_factory (optional): only required if `data_path` is None.
+            Should be a Callable that returns a new instance of the environment
+            to be used whenever it is called. Seeding will happen automatically.
+        rollouts (list, optional): a list of RolloutConfigs describing
+            the different policies to use and how to weight them.
         num_train (int, optional): number of training samples.
         num_test (int, optional): number of test samples.
         transform (Callable, optional): transforms to pass on to the Dataset.
@@ -260,9 +364,9 @@ def get_data_loaders(
     """
     if data_path is not None:
         # if a path to a dataset is given, we use that
-        if policy is not None:
+        if rollouts is not None:
             raise ValueError(
-                "Both policy and path to a dataset were given, can only use one."
+                "Both policies and path to a dataset were given, can only use one."
             )
 
         return _get_stored_data_loaders(
@@ -271,12 +375,17 @@ def get_data_loaders(
 
     # if no path is given, we return a dataloader that generates samples
     # dynamically
-    if venv is None:
+    if venv_factory is None:
         raise ValueError("Path to dataset or an environment are required.")
     if num_workers > 0:
         raise ValueError(
             "Multiple workers are currently not supported for dynamic datasets."
         )
+    if rollouts is None:
+        raise ValueError(
+            "Neither rollout configuration nor dataset path are given, "
+            "need one of them."
+        )
     return _get_dynamic_data_loaders(
-        batch_size, seed, venv, policy, num_train, num_test, transform
+        batch_size, seed, venv_factory, rollouts, num_train, num_test, transform
     )
