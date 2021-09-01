@@ -15,6 +15,7 @@ exec pipenv run python src/reward_preprocessing/interpret.py with \
     model_path="results/models/$env_name.pt" \
     agent_path="results/agents/$env_name" \
     sparsify.data_path="results/data/$env_name" \
+    rewards.data_path="results/data/$env_name" \
     model_type="$MODEL_TYPE" \
     "env.$env_name" \
     "${@:2}"

@@ -18,6 +18,7 @@ use via CLI arguments.
 """
 
 from .noise import add_noise_potential, noise_ingredient
+from .plot_rewards import plot_rewards, reward_ingredient
 from .sparsify import sparsify, sparsify_ingredient
 from .visualize_rollout import rollout_ingredient, visualize_rollout
 from .visualize_transitions import transition_ingredient, visualize_transitions
@@ -31,4 +32,6 @@ __all__ = [
     "add_noise_potential",
     "visualize_transitions",
     "transition_ingredient",
+    "reward_ingredient",
+    "plot_rewards",
 ]

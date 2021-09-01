@@ -10,6 +10,8 @@ from reward_preprocessing.env import create_env, env_ingredient
 from reward_preprocessing.interp import (
     add_noise_potential,
     noise_ingredient,
+    plot_rewards,
+    reward_ingredient,
     rollout_ingredient,
     sparsify,
     sparsify_ingredient,
@@ -28,6 +30,7 @@ ex = Experiment(
         sparsify_ingredient,
         noise_ingredient,
         transition_ingredient,
+        reward_ingredient,
     ],
 )
 add_observers(ex)
@@ -92,4 +95,5 @@ def main(
     model.eval()
     visualize_transitions(model, env, device=device, agent=agent)
     visualize_rollout(model, env, device=device, agent=agent)
+    plot_rewards(model, device)
     env.close()
