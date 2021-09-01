@@ -48,8 +48,8 @@ class MixedDataset(torch.utils.data.IterableDataset):
 
     def __init__(
         self,
-        datasets: List[torch.utils.data.IterableDataset],
-        weights: Optional[List[float]] = None,
+        datasets: Sequence[torch.utils.data.IterableDataset],
+        weights: Optional[Sequence[float]] = None,
         num: Optional[int] = None,
         seed: int = 0,
     ):
@@ -250,7 +250,7 @@ def collate_fn(
 
 
 def get_dynamic_dataset(
-    rollouts: List[RolloutConfig],
+    rollouts: Sequence[RolloutConfig],
     venv_factory: Callable[[], VecEnv],
     transform: Optional[Callable] = None,
     seed: int = 0,
