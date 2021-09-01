@@ -12,7 +12,7 @@ noise_ingredient = Ingredient("noise", ingredients=[env_ingredient])
 
 @noise_ingredient.config
 def config():
-    enabled = True
+    enabled = False
     std = 1.0  # standard deviation of the potential weights
     mean = 0.0  # mean of the potential weights
     potential = None  # class name of the potential

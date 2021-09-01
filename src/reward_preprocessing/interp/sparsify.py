@@ -16,7 +16,7 @@ get_data_loaders, _ = use_rollouts(sparsify_ingredient)
 
 @sparsify_ingredient.config
 def config():
-    enabled = True
+    enabled = False
     epochs = 1  # number of epochs to train for
     potential = None  # class name of the potential
     potential_options = {}  # kwargs for the potential (other than gamma)
