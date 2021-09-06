@@ -8,10 +8,15 @@ from reward_preprocessing.transition import Transition
 def test_dummy_potential():
     # create a reward model
     model = MlpRewardModel((5, 5))
+    gamma = 0.9
+
     # create a dummy potential shaping: the potential phi(s) is simply
     # the sum of all the entries of s
-    gamma = 0.9
-    shaping = PotentialShaping(model, torch.sum, gamma)
+    def potential(s):
+        # we don't want to sum away the batch dimension
+        return s.view(s.size(0), -1).sum(dim=1)
+
+    shaping = PotentialShaping(model, potential, gamma)
 
     torch.manual_seed(0)
     # create a random transition
@@ -24,7 +29,7 @@ def test_dummy_potential():
     original = model(transition)
     shaped = shaping(transition)
 
-    assert shaped == original + gamma * torch.sum(next_state) - torch.sum(state)
+    assert shaped == original + gamma * potential(next_state) - potential(state)
 
     # now check that the terminal state has potential 0
     done = torch.tensor([True])
@@ -33,4 +38,4 @@ def test_dummy_potential():
     original = model(transition)
     shaped = shaping(transition)
 
-    assert shaped == original - torch.sum(state)
+    assert shaped == original - potential(state)
