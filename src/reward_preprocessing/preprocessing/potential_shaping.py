@@ -47,14 +47,19 @@ class PotentialShaping(Preprocessor):
 
     def forward(self, transitions: Transition) -> torch.Tensor:
         rewards = self.model(transitions)
-        current_potential = self.potential(transitions.state).squeeze(dim=1)
+        if rewards.ndim > 1:
+            rewards = rewards.squeeze(dim=1)
+        current_potential = self.potential(transitions.state)
+        if current_potential.ndim > 1:
+            current_potential = current_potential.squeeze(dim=1)
         # Make sure that there isn't any unwanted broadcasting
         # (which could happen if one of these has singleton dimensions)
         assert transitions.done.shape == current_potential.shape
+        next_potential = self.potential(transitions.next_state)
+        if next_potential.ndim > 1:
+            next_potential = next_potential.squeeze(dim=1)
         # if the next state is final, then we set it's potential to zero
-        next_potential = torch.logical_not(transitions.done) * self.potential(
-            transitions.next_state
-        ).squeeze(dim=1)
+        next_potential *= torch.logical_not(transitions.done)
         assert rewards.shape == next_potential.shape
         return rewards + self.gamma * next_potential - current_potential
 

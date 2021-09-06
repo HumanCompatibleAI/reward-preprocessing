@@ -14,7 +14,10 @@ def test_dummy_potential():
     # the sum of all the entries of s
     def potential(s):
         # we don't want to sum away the batch dimension
-        return s.view(s.size(0), -1).sum(dim=1)
+        out = s.view(s.size(0), -1).sum(dim=1)
+        assert out.size(0) == s.size(0)
+        assert out.ndim == 1
+        return out
 
     shaping = PotentialShaping(model, potential, gamma)
 
