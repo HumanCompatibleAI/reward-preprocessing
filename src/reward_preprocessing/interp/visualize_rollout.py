@@ -1,16 +1,19 @@
 from typing import Tuple
 
+from imitation.data.types import Transitions
+from imitation.rewards.reward_nets import RewardNet
 import matplotlib.pyplot as plt
 import numpy as np
 from sacred import Ingredient
-import torch
 
-from reward_preprocessing.env.env_ingredient import create_env, env_ingredient
-from reward_preprocessing.models import RewardModel
-from reward_preprocessing.transition import get_transitions
-from reward_preprocessing.utils import sacred_save_fig
+from reward_preprocessing.env.env_ingredient import (
+    create_visualization_env,
+    env_ingredient,
+)
+from reward_preprocessing.utils import sacred_save_fig, use_rollouts
 
 rollout_ingredient = Ingredient("rollout_visualization", ingredients=[env_ingredient])
+_, get_dataset = use_rollouts(rollout_ingredient)
 
 
 @rollout_ingredient.config
@@ -23,12 +26,10 @@ def config():
 
 @rollout_ingredient.capture
 def visualize_rollout(
-    model: RewardModel,
-    device,
+    model: RewardNet,
     plot_shape: Tuple[int, int],
     enabled: bool,
     _run,
-    agent=None,
 ) -> None:
     """Visualizes a reward model by rendering a rollout together with the
     rewards predicted by the model."""
@@ -38,21 +39,25 @@ def visualize_rollout(
     fig, ax = plt.subplots(n_rows, n_cols, figsize=(4 * n_rows, 4 * n_cols))
     ax = ax.reshape(-1)
 
-    env = create_env(n_envs=1)
-    for i, (transition, actual_reward) in enumerate(
-        get_transitions(env, agent, num=n_rows * n_cols)
+    for i, transition in enumerate(
+        get_dataset(create_visualization_env, steps=n_rows * n_cols)
     ):
-        done = transition.done
+        done = transition["dones"]
+        actual_reward = transition["rews"]
 
-        # we add a batch singleton dimension to the front
-        # use np.array because that works both if the field is already
-        # an array (such as the state) and if it's a scalar (such as done)
-        transition = transition.apply(lambda x: np.array([x]))
-        transition = transition.apply(torch.from_numpy)
-        transition = transition.apply(lambda x: x.float().to(device))
-        predicted_reward = model(transition).item()
+        # We add a batch singleton dimension to the front.
+        # Use np.array([...]) because that works both if the field is already
+        # an array and if it's a scalar.
+        inputs = Transitions(
+            obs=np.array([transition["obs"]]),
+            acts=np.array([transition["acts"]]),
+            next_obs=np.array([transition["next_obs"]]),
+            infos=None,
+            dones=np.array([transition["dones"]]),
+        )
+        predicted_reward = model(*model.preprocess(inputs)).item()
 
-        ax[i].imshow(env.render(mode="rgb_array"))
+        ax[i].imshow(transition["infos"]["rendering"])
         ax[i].set_axis_off()
         title = f"{predicted_reward:.2f} ({actual_reward:.2f})"
         if done:

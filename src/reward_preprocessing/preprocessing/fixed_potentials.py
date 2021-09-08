@@ -1,8 +1,7 @@
 """Collection of hand-designed potentials for specific environments."""
 
+from imitation.rewards.reward_nets import RewardNet
 from stable_baselines3.common.vec_env import VecNormalize
-
-from reward_preprocessing.models import RewardModel
 
 from .potential_shaping import PotentialShaping
 
@@ -29,7 +28,7 @@ class SparseHalfCheetah(PotentialShaping):
     which for gamma close to 1 should be much lower.
     """
 
-    def __init__(self, env: VecNormalize, model: RewardModel, gamma: float):
+    def __init__(self, env: VecNormalize, model: RewardNet, gamma: float):
         self.dt = 0.05  # see docstring for explanation
 
         def potential(obs):

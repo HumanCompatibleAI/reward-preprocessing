@@ -1,12 +1,12 @@
 from typing import Any, Mapping
 
+from imitation.rewards.reward_nets import RewardNet
 from sacred import Ingredient
 import torch
 from tqdm import tqdm
 import wandb
 
 from reward_preprocessing.env import create_env, env_ingredient
-from reward_preprocessing.models import RewardModel
 from reward_preprocessing.preprocessing.potential_shaping import instantiate_potential
 from reward_preprocessing.utils import get_env_name, sacred_save_fig, use_rollouts
 
@@ -31,7 +31,7 @@ def config():
 
 @sparsify_ingredient.capture
 def sparsify(
-    model: RewardModel,
+    model: RewardNet,
     device,
     gamma: float,
     use_wandb: bool,
@@ -45,7 +45,7 @@ def sparsify(
     potential: str,
     epochs: int,
     _run,
-) -> RewardModel:
+) -> RewardNet:
     if not enabled:
         return model
 
@@ -56,7 +56,7 @@ def sparsify(
         env_name, potential, model=model, gamma=gamma, **potential_options
     ).to(device)
 
-    train_loader = get_dataloader(create_env, num_workers=0)
+    train_loader = get_dataloader(create_env)
 
     # the weights of the original model are automatically frozen,
     # we only train the final potential shaping
@@ -73,10 +73,10 @@ def sparsify(
     running_loss = 0.0
     step = 0
     for e in range(epochs):
-        for i, (inputs, rewards) in tqdm(enumerate(train_loader)):
+        for i, inputs in tqdm(enumerate(train_loader)):
             step += 1
             optimizer.zero_grad()
-            loss = loss_fn(model(inputs.to(device)))
+            loss = loss_fn(model(*model.preprocess(inputs)))
             loss.backward()
             optimizer.step()
             if scheduler and i % lr_decay_every == lr_decay_every - 1:

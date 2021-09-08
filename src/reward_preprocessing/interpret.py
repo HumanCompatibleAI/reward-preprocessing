@@ -1,6 +1,7 @@
 from typing import Any, Mapping
 import warnings
 
+from imitation.rewards.reward_nets import BasicRewardNet
 from sacred import Experiment
 from stable_baselines3 import PPO
 import torch
@@ -21,7 +22,6 @@ from reward_preprocessing.interp import (
     visualize_rollout,
     visualize_transitions,
 )
-from reward_preprocessing.models import MlpRewardModel, SasRewardModel
 from reward_preprocessing.utils import add_observers
 
 ex = Experiment(
@@ -45,7 +45,8 @@ def config():
     agent_path = None  # path to the agent to use for sampling (without extension)
     model_path = None  # path to the model to be interpreted (with extension)
     gamma = 0.99  # discount rate (used for all potential shapings)
-    model_type = "ss"  # type of reward model, either 'ss' or 'sas'
+    model_type = "ss"  # type of reward model, either 's', 'sa', 'ss' or 'sas'
+    model_kwargs = {}  # additional kwargs for BasicRewardNet
     wb = {}  # kwargs for wandb.init()
 
     _ = locals()  # make flake8 happy
@@ -59,6 +60,7 @@ def main(
     gamma: float,
     model_type: str,
     wb: Mapping[str, Any],
+    model_kwargs: Mapping[str, Any],
     _config,
 ):
     env = create_env()
@@ -73,14 +75,30 @@ def main(
     else:
         device = torch.device("cpu")
 
-    if model_type == "ss":
-        model = MlpRewardModel(env.observation_space.shape).to(device)
+    if model_type == "s":
+        use_action = False
+        use_next_state = False
+    elif model_type == "sa":
+        use_action = True
+        use_next_state = False
+    elif model_type == "ss":
+        use_action = False
+        use_next_state = True
     elif model_type == "sas":
-        model = SasRewardModel(env.observation_space.shape, env.action_space.shape).to(
-            device
-        )
+        use_action = True
+        use_next_state = True
     else:
-        raise ValueError(f"Unknown model type '{model_type}', expected 'ss' or 'sas'.")
+        raise ValueError(
+            f"Unknown model type '{model_type}', expected 's', 'sa', 'ss' or 'sas'."
+        )
+
+    model = BasicRewardNet(
+        env.observation_space,
+        env.action_space,
+        use_action=use_action,
+        use_next_state=use_next_state,
+        **model_kwargs,
+    ).to(device)
     model.load_state_dict(torch.load(model_path, map_location=device))
 
     use_wandb = False
@@ -98,6 +116,6 @@ def main(
     model = sparsify(model, device=device, gamma=gamma, use_wandb=use_wandb)
     model.eval()
     plot_rewards(model, device)
-    visualize_transitions(model, device=device, agent=agent)
-    visualize_rollout(model, device=device, agent=agent)
+    visualize_transitions(model)
+    visualize_rollout(model)
     env.close()

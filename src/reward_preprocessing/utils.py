@@ -1,22 +1,29 @@
 import importlib
 from pathlib import Path
 import tempfile
-from typing import Callable, Sequence, Tuple
+from typing import Callable, Tuple
 
+import gym
 import matplotlib.pyplot as plt
 import sacred
 from stable_baselines3.common.vec_env import VecVideoRecorder
 from stable_baselines3.common.vec_env.base_vec_env import VecEnv, VecEnvObs
 
-from reward_preprocessing.datasets import (
+from reward_preprocessing.data import (
     RolloutConfig,
-    StoredRewardData,
     get_dataloader,
-    get_dynamic_dataset,
-    to_torch,
+    get_transition_dataset,
 )
 
-EnvFactory = Callable[[], VecEnv]
+
+class RenderWrapper(gym.Wrapper):
+    def __init__(self, env):
+        super().__init__(env)
+
+    def step(self, action):
+        observations, rewards, dones, infos = super().step(action)
+        infos["rendering"] = self.env.render(mode="rgb_array")
+        return (observations, rewards, dones, infos)
 
 
 class ContinuousVideoRecorder(VecVideoRecorder):
@@ -29,16 +36,6 @@ class ContinuousVideoRecorder(VecVideoRecorder):
         if start_video:
             self.start_video_recorder()
         return obs
-
-
-class ComposeTransforms:
-    def __init__(self, transforms: Sequence[Callable]):
-        self.transforms = transforms
-
-    def __call__(self, x):
-        for trafo in self.transforms:
-            x = trafo(x)
-        return x
 
 
 def add_observers(ex: sacred.Experiment) -> None:
@@ -63,16 +60,13 @@ def use_rollouts(
     """Add a config scope to a Sacred Experiment which will add configs
     needed for using rollouts.
 
-    Returns a capture function that only needs to be passed a venv factory
-    function and returns train and test dataloaders.
+    Returns a two capture functions that only need to be passed a venv factory.
+    The first returns a dataloader, the second an instance of TransitionsWithRew.
     """
 
     def config():
-        # path to a dataset to load transitions from (without extension)
-        data_path = None
         rollouts = None  # each element should be a RolloutConfig instance
-        # number of workers for the Dataloader (only for static dataset)
-        num_workers = 0
+        num_workers = 0  # number of workers for the Dataloader
         steps = 10000  # number of train transitions
         test_steps = 5000  # number of test transitions
         batch_size = 32  # how many transitions per batch
@@ -94,10 +88,10 @@ def use_rollouts(
         batch_size,
         num_workers,
         _seed,
-        data_path,
         rollouts,
         steps,
-        mode="train",
+        test_steps,
+        train=True,
     ):
         # turn the rollout configs from ReadOnlyLists into RolloutConfigs
         # (Sacred turns the namedtuples into lists)
@@ -105,45 +99,33 @@ def use_rollouts(
             rollouts = [RolloutConfig(*x) for x in rollouts]
         return get_dataloader(
             batch_size,
-            num_workers,
-            _seed,
-            data_path,
-            venv_factory,
             rollouts,
-            steps,
-            transform=to_torch,
-            mode=mode,
+            venv_factory,
+            num_workers,
+            # use different seed for testing
+            _seed + int(train),
+            steps if train else test_steps,
         )
 
     def _get_dataset(
+        venv_factory,
         _seed,
         rollouts,
         steps,
-        data_path,
-        venv_factory=None,
-        transform=None,
-        mode="train",
+        test_steps,
+        train=True,
     ):
         # turn the rollout configs from ReadOnlyLists into RolloutConfigs
         # (Sacred turns the namedtuples into lists)
         if rollouts is not None:
             rollouts = [RolloutConfig(*x) for x in rollouts]
-        if data_path is not None:
-            if rollouts is not None:
-                raise ValueError("'rollouts' and 'data_path' mustn't both be set")
-            return StoredRewardData(
-                Path(data_path), num=steps, transform=transform, mode=mode
-            )
 
-        if rollouts is None:
-            raise ValueError("One of 'rollouts' and 'data_path' must be set")
-
-        return get_dynamic_dataset(
-            venv_factory=venv_factory,
+        return get_transition_dataset(
             rollouts=rollouts,
-            seed=_seed,
-            num=steps,
-            transform=transform,
+            venv_factory=venv_factory,
+            num=steps if train else test_steps,
+            # use different seed for testing
+            seed=_seed + int(train),
         )
 
     return ing.capture(_get_dataloader), ing.capture(_get_dataset)

@@ -1,9 +1,9 @@
 from typing import Any, Mapping
 
+from imitation.rewards.reward_nets import RewardNet
 from sacred import Ingredient
 
 from reward_preprocessing.env import create_env, env_ingredient
-from reward_preprocessing.models import RewardModel
 from reward_preprocessing.preprocessing import PotentialShaping
 from reward_preprocessing.utils import get_env_name, instantiate, sacred_save_fig
 
@@ -24,13 +24,13 @@ def config():
 
 @fixed_ingredient.capture
 def add_fixed_potential(
-    model: RewardModel,
+    model: RewardNet,
     gamma: float,
     enabled: bool,
     options: Mapping[str, Any],
     potential: str,
     _run,
-) -> RewardModel:
+) -> RewardNet:
     if not enabled:
         return model
 

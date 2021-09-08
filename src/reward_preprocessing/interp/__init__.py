@@ -1,6 +1,6 @@
 """Package containing Sacred Ingredients for interpreting reward models.
 Each Ingredient should contain at least one capture function which receives
-a RewardModel (and if necessary other input, such as episode rollouts or single
+a RewardNet (and if necessary other input, such as episode rollouts or single
 transitions) and produces some artifacts or returns values to be used for
 interpretation. This can include visualizations, but also returning an
 equivalent but easier to interpret reward model.

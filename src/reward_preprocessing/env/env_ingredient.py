@@ -2,6 +2,7 @@ from typing import Any, Iterable, Mapping, Optional
 
 import gym
 from sacred import Ingredient
+import seals  # noqa: F401
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
 from reward_preprocessing.utils import instantiate
@@ -98,3 +99,9 @@ def create_env(
             env = VecNormalize(env, norm_obs=True, norm_reward=False)
 
     return env
+
+
+def create_visualization_env(_seed: int):
+    return create_env(
+        n_envs=1, wrappers=["reward_preprocessing.utils.RenderWrapper"], _seed=_seed
+    )

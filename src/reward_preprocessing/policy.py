@@ -2,6 +2,7 @@ import random
 from typing import Callable, Optional, Union
 
 import gym
+from imitation.data.types import AnyPath, path_to_str
 import numpy as np
 from stable_baselines3 import PPO
 from stable_baselines3.common.base_class import BaseAlgorithm
@@ -61,7 +62,7 @@ def policy_to_callable(
 
 def get_policy(
     random_prob: float = 1,
-    expert_path: Optional[str] = None,
+    agent_path: Optional[AnyPath] = None,
     action_space: Optional[gym.Space] = None,
 ) -> PolicyCallable:
     """Create a policy (which can be passed to get_transitions etc.)
@@ -78,17 +79,14 @@ def get_policy(
     """
     if random_prob > 0 and action_space is None:
         raise ValueError("random_prob is > 0, so action_space must be set")
-    if random_prob < 1 and expert_path is None:
+    if random_prob < 1 and agent_path is None:
         raise ValueError("random_prob is < 1, so expert_path must be set")
-
-    # type checkers don't realize that venv and expert_path can't
-    # be None in the relevant branches, which is why we have
-    # the # type: ignore comments
 
     if random_prob == 1:
         return policy_to_callable(action_space)
 
-    agent = PPO.load(expert_path)
+    assert agent_path is not None
+    agent = PPO.load(path_to_str(agent_path))
     if random_prob == 0:
         return policy_to_callable(agent)
 

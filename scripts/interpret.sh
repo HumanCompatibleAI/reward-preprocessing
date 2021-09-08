@@ -8,7 +8,7 @@ env_name="$1"
 if [[ "$env_name" == half_cheetah ]]; then
     MODEL_TYPE=sas
 else
-    MODEL_TYPE=ss
+    MODEL_TYPE=sa
 fi
 
 exec pipenv run python src/reward_preprocessing/interpret.py with \

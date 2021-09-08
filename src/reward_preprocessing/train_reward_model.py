@@ -2,13 +2,13 @@ from pathlib import Path
 import tempfile
 from typing import Any, Mapping
 
+from imitation.rewards.reward_nets import BasicRewardNet
 from sacred import Experiment
 import torch
 from tqdm import tqdm
 import wandb
 
 from reward_preprocessing.env import create_env, env_ingredient
-from reward_preprocessing.models import MlpRewardModel, SasRewardModel
 from reward_preprocessing.utils import add_observers, use_rollouts
 
 ex = Experiment("train_reward_model", ingredients=[env_ingredient])
@@ -28,7 +28,7 @@ def config():
     # without an extension (but including a filename).
     save_path = None  # path to save the model to (without extension)
     run_dir = "runs/reward_model"
-    model_type = "ss"  # type of reward model, either 'ss' or 'sas'
+    model_type = "ss"  # type of reward model, either 's', 'sa', 'ss' or 'sas'
     lr = 0.001  # learning rate
     lr_decay_rate = None  # factor to multiply by on each LR decay
     lr_decay_every = 100  # decay the learning rate every n batches
@@ -61,14 +61,29 @@ def main(
     else:
         device = torch.device("cpu")
 
-    if model_type == "ss":
-        model = MlpRewardModel(train_loader.dataset.state_shape).to(device)
+    if model_type == "s":
+        use_action = False
+        use_next_state = False
+    elif model_type == "sa":
+        use_action = True
+        use_next_state = False
+    elif model_type == "ss":
+        use_action = False
+        use_next_state = True
     elif model_type == "sas":
-        model = SasRewardModel(
-            train_loader.dataset.state_shape, train_loader.dataset.action_shape
-        ).to(device)
+        use_action = True
+        use_next_state = True
     else:
-        raise ValueError(f"Unknown model type '{model_type}', expected 'ss' or 'sas'.")
+        raise ValueError(
+            f"Unknown model type '{model_type}', expected 's', 'sa', 'ss' or 'sas'."
+        )
+
+    model = BasicRewardNet(
+        train_loader.dataset.observation_space,
+        train_loader.dataset.action_space,
+        use_action=use_action,
+        use_next_state=use_next_state,
+    ).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     scheduler = None
     if lr_decay_rate is not None:
@@ -92,9 +107,10 @@ def main(
     step = 0
     running_loss = 0.0
     for e in range(epochs):
-        for inputs, rewards in tqdm(train_loader):
+        for inputs in tqdm(train_loader):
             optimizer.zero_grad()
-            loss = loss_fn(model(inputs.to(device)), rewards.to(device))
+            rewards = torch.as_tensor(inputs.rewards, device=device)
+            loss = loss_fn(model(*model.preprocess(inputs)), rewards)
             loss.backward()
             optimizer.step()
             step += 1
@@ -124,7 +140,9 @@ def main(
                 i = 0
                 for inputs, rewards in test_loader:
                     i += 1
-                    test_loss += loss_fn(model(inputs.to(device)), rewards.to(device))
+                    test_loss += loss_fn(
+                        model(*model.preprocess(inputs)), rewards.to(device)
+                    )
             print("Epoch {:3d} | Test Loss: {:.6f}".format(e, test_loss.item() / i))
             if wb:
                 wandb.log(

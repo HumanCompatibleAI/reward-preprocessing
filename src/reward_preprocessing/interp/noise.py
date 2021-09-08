@@ -1,9 +1,9 @@
 from typing import Any, Mapping
 
+from imitation.rewards.reward_nets import RewardNet
 from sacred import Ingredient
 
 from reward_preprocessing.env import create_env, env_ingredient
-from reward_preprocessing.models import RewardModel
 from reward_preprocessing.preprocessing.potential_shaping import instantiate_potential
 from reward_preprocessing.utils import get_env_name, sacred_save_fig
 
@@ -24,7 +24,7 @@ def config():
 
 @noise_ingredient.capture
 def add_noise_potential(
-    model: RewardModel,
+    model: RewardNet,
     gamma: float,
     enabled: bool,
     std: float,
@@ -32,7 +32,7 @@ def add_noise_potential(
     potential: str,
     potential_options: Mapping[str, Any],
     _run,
-) -> RewardModel:
+) -> RewardNet:
     if not enabled:
         return model
 

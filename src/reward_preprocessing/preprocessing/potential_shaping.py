@@ -10,14 +10,13 @@ that use a particular type of potential.
 from typing import Callable, Optional
 
 import gym
+from imitation.rewards.reward_nets import RewardNet
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from torch import nn
 
 from reward_preprocessing.env.maze import get_agent_positions
-from reward_preprocessing.models import RewardModel
-from reward_preprocessing.transition import Transition
 from reward_preprocessing.utils import instantiate
 
 from .preprocessor import Preprocessor
@@ -27,7 +26,7 @@ class PotentialShaping(Preprocessor):
     """A preprocessor that adds a potential shaping to the reward.
 
     Args:
-        model: the RewardModel to be wrapped
+        model: the RewardNet to be wrapped
         potential: a Callable that receives a batch of states and returns
             a batch of scalars.
             If the potential is itself a torch.nn.Module, it will become
@@ -37,7 +36,7 @@ class PotentialShaping(Preprocessor):
 
     def __init__(
         self,
-        model: RewardModel,
+        model: RewardNet,
         potential: Callable,
         gamma: float,
     ):
@@ -45,21 +44,27 @@ class PotentialShaping(Preprocessor):
         self.potential = potential
         self.gamma = gamma
 
-    def forward(self, transitions: Transition) -> torch.Tensor:
-        rewards = self.model(transitions)
+    def forward(
+        self,
+        state: torch.Tensor,
+        action: torch.Tensor,
+        next_state: torch.Tensor,
+        done: torch.Tensor,
+    ) -> torch.Tensor:
+        rewards = self.model(state, action, next_state, done)
         if rewards.ndim > 1:
             rewards = rewards.squeeze(dim=1)
-        current_potential = self.potential(transitions.state)
+        current_potential = self.potential(state)
         if current_potential.ndim > 1:
             current_potential = current_potential.squeeze(dim=1)
         # Make sure that there isn't any unwanted broadcasting
         # (which could happen if one of these has singleton dimensions)
-        assert transitions.done.shape == current_potential.shape
-        next_potential = self.potential(transitions.next_state)
+        assert done.shape == current_potential.shape
+        next_potential = self.potential(next_state)
         if next_potential.ndim > 1:
             next_potential = next_potential.squeeze(dim=1)
         # if the next state is final, then we set it's potential to zero
-        next_potential *= torch.logical_not(transitions.done)
+        next_potential *= torch.logical_not(done)
         assert rewards.shape == next_potential.shape
         return rewards + self.gamma * next_potential - current_potential
 
@@ -104,7 +109,7 @@ class PytorchPotentialShaping(PotentialShaping):
 
     def __init__(
         self,
-        model: RewardModel,
+        model: RewardNet,
         potential: nn.Module,
         gamma: float,
     ):
@@ -155,8 +160,8 @@ class PytorchPotentialShaping(PotentialShaping):
 class LinearPotentialShaping(PytorchPotentialShaping):
     """A potential shaping preprocessor with a learned linear potential."""
 
-    def __init__(self, model: RewardModel, gamma: float):
-        in_size = np.product(model.state_shape)
+    def __init__(self, model: RewardNet, gamma: float):
+        in_size = np.product(model.observation_space.shape)
         potential = nn.Sequential(nn.Flatten(), nn.Linear(in_size, 1))
         super().__init__(model, potential, gamma)
 
@@ -166,20 +171,20 @@ class MlpPotentialShaping(PytorchPotentialShaping):
     Uses ReLU activation functions.
 
     Args:
-        state_shape: shape of the observations the environment produces
-            (these observations have to be arrays of floats, discrete
-            observations are not supported)
-        hidden_size (optional): number of neurons in each hidden layer
+        model: the RewardNet to be shaped
+        gamma: discount factor
+        hidden_size: number of neurons in each hidden layer
+        num_hidden: number of hidden layers
     """
 
     def __init__(
         self,
-        model: RewardModel,
+        model: RewardNet,
         gamma: float,
         hidden_size: int = 64,
         num_hidden: int = 1,
     ):
-        in_size = np.product(model.state_shape)
+        in_size = np.product(model.observation_space.shape)
         layers = [nn.Flatten(), nn.Linear(in_size, hidden_size), nn.ReLU()]
         if num_hidden < 1:
             raise ValueError(
@@ -198,9 +203,9 @@ class MlpPotentialShaping(PytorchPotentialShaping):
 class MazelabPotentialShaping(PotentialShaping):
     """A preprocessor that adds a learned potential shaping in Mazelab environment."""
 
-    def __init__(self, model: RewardModel, gamma: float):
+    def __init__(self, model: RewardNet, gamma: float):
         super().__init__(model, self._potential, gamma)
-        in_size = np.product(model.state_shape)
+        in_size = np.product(model.observation_space.shape)
         self._data = nn.Parameter(torch.zeros(in_size))
 
     def _potential(self, states):

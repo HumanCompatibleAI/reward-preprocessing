@@ -1,31 +1,37 @@
+from imitation.rewards.reward_nets import RewardNet
 import torch
 
-from reward_preprocessing.models import RewardModel
-from reward_preprocessing.transition import Transition
 
-
-class Preprocessor(RewardModel):
-    """A Wrapper around a RewardModel which modifies its output
+class Preprocessor(RewardNet):
+    """A Wrapper around a RewardNet which modifies its output
     to make it easier to interpret.
     This class implements the identity preprocessor and is meant to be
     used as a base class for more complex preprocessors.
 
-    Note: the weights of the wrapped RewardModel are frozen
+    Note: the weights of the wrapped RewardNet are frozen
     because when training the Proprocessor, the original model
     weights should stay fixed. The model is also put into eval mode.
     Both changes can be undone using unfreeze_model().
 
     Args:
-        model: the RewardModel to be wrapped
+        model: the RewardNet to be wrapped
     """
 
-    def __init__(self, model: RewardModel):
-        super().__init__(model.state_shape)
+    def __init__(self, model: RewardNet):
+        super().__init__(
+            model.observation_space, model.action_space, model.normalize_images
+        )
         self.model = model
         self.freeze_model()
 
-    def forward(self, transitions: Transition) -> torch.Tensor:
-        return self.model(transitions)
+    def forward(
+        self,
+        state: torch.Tensor,
+        action: torch.Tensor,
+        next_state: torch.Tensor,
+        done: torch.Tensor,
+    ) -> torch.Tensor:
+        return self.model(state, action, next_state, done)
 
     def freeze_model(self):
         """Freeze the weights of the wrapped model and put it into eval mode.
