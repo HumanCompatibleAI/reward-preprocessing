@@ -42,12 +42,25 @@ def mountain_car():
 
 
 @env_ingredient.named_config
+def pendulum():
+    name = "Pendulum-v0"
+    _ = locals()  # make flake8 happy
+    del _
+
+
+@env_ingredient.named_config
 def half_cheetah():
-    name = "HalfCheetah-v3"
-    wrappers = ["sb3_contrib.common.wrappers.TimeFeatureWrapper"]
-    stats_path = "results/stats/half_cheetah.pkl"
-    options = {"exclude_current_positions_from_observation": False}
-    n_envs = 16
+    name = "seals/HalfCheetah-v0"
+    stats_path = "results/agents/half_cheetah/vec_normalize.pkl"
+    normalize = True
+    _ = locals()  # make flake8 happy
+    del _
+
+
+@env_ingredient.named_config
+def hopper():
+    name = "seals/Hopper-v0"
+    stats_path = "results/agents/hopper/vec_normalize.pkl"
     normalize = True
     _ = locals()  # make flake8 happy
     del _
