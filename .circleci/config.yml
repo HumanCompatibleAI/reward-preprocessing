@@ -25,8 +25,9 @@ commands:
           name: install reward_preprocessing
           # Build a wheel then install to avoid copying whole directory (pip issue #2195)
           command: |
-            pipenv run python setup.py sdist bdist_wheel
-            pipenv run pip install dist/reward_preprocessing-*.whl
+            poetry run pip install git+https://github.com/HumanCompatibleAI/imitation
+            poetry run python setup.py sdist bdist_wheel
+            poetry run pip install dist/reward_preprocessing-*.whl
 
 jobs:
   test:
@@ -37,20 +38,20 @@ jobs:
           name: Run tests
           # CircleCI ignores the Docker ENTRYPOINT, so we need
           # /tini -- xvfb-run here again
-          command: /tini -- xvfb-run pipenv run pytest
+          command: /tini -- xvfb-run poetry run pytest
   lint:
     executor: main_executor
     steps:
       - setup
       - run:
           name: flake8
-          command: pipenv run flake8 $SRC_FILES
+          command: poetry run flake8 $SRC_FILES
       - run:
           name: black
-          command: pipenv run black --check $SRC_FILES
+          command: poetry run black --check $SRC_FILES
       - run:
           name: pytype
-          command: pipenv run pytype $SRC_FILES
+          command: poetry run pytype $SRC_FILES
 
 workflows:
   main:

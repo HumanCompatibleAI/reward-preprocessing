@@ -46,17 +46,26 @@ RUN mkdir -p /root/.mujoco \
 
 ENV LD_LIBRARY_PATH /root/.mujoco/mujoco200/bin:${LD_LIBRARY_PATH}
 
-RUN pip install pipenv && pip cache purge
+RUN curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/install-poetry.py | python -
+ENV PATH="/root/.local/bin:$PATH"
+
 
 WORKDIR /reward_preprocessing
 # Copy only necessary dependencies to build virtual environment.
 # This minimizes how often this layer needs to be rebuilt.
-COPY ./Pipfile.lock ./Pipfile.lock
-# clear the pipenv cache to keep the image a bit smaller
-RUN pipenv sync --dev --verbose && pipenv --clear
+COPY poetry.lock pyproject.toml ./
+# Clear the cache immediately. Annoyingly, there doesn't seem to be a good
+# option for confirming, so we just pipe yes into it
+# (see https://github.com/python-poetry/poetry/issues/521)
+RUN poetry install --no-interaction --no-ansi && yes | poetry cache clear . --all
+# HACK: make sure we have all the dependencies of imitation but then uninstall
+# imitation itself. We want to use the git version of that and that changes too
+# frequently to include in this stage
+RUN poetry run pip install imitation && poetry run pip uninstall --yes imitation && poetry run pip cache purge
+
 # clear the directory again (this is necessary so that CircleCI can checkout
 # into the directory)
-RUN rm Pipfile.lock Pipfile
+RUN rm poetry.lock pyproject.toml
 
 # full stage contains everything.
 # Can be used for deployment and local testing.
@@ -64,11 +73,12 @@ FROM dependencies as full
 
 # Delay copying (and installing) the code until the very end
 COPY . /reward_preprocessing
+RUN poetry run pip install git+https://github.com/HumanCompatibleAI/imitation
 # Build a wheel then install to avoid copying whole directory (pip issue #2195)
 # Note that all dependencies were already installed in the previous stage.
 # The purpose of this is only to make the local code available as a package for
 # easier import.
-RUN pipenv run python setup.py sdist bdist_wheel
-RUN pipenv run pip install dist/reward_preprocessing-*.whl
+RUN poetry run python setup.py sdist bdist_wheel
+RUN poetry run pip install dist/reward_preprocessing-*.whl
 
-CMD ["pipenv", "run", "pytest"]
+CMD ["poetry", "run", "pytest"]

@@ -18,6 +18,7 @@ docker run \
     --env MUJOCO_KEY_URL="$MUJOCO_KEY_URL" \
     --env NETRC_CONTENTS=$(cat "$HOME/.netrc") \
     --mount type=bind,src="$REWARD_PREPROCESSING_DIR",target=/reward_preprocessing \
+    --mount type=bind,src="$IMITATION_DIR",target=/imitation \
     "$@" \
     ejenner/reward_preprocessing:dependencies \
     ci/docker_setup.sh

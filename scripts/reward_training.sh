@@ -11,7 +11,7 @@ else
     MODEL_TYPE=ss
 fi
 
-exec pipenv run python src/reward_preprocessing/train_reward_model.py with \
+exec poetry run python src/reward_preprocessing/train_reward_model.py with \
     data_path="results/data/$env_name" \
     model_type="$MODEL_TYPE" \
     save_path="results/models/$env_name" \
