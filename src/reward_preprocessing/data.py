@@ -1,7 +1,5 @@
 """Module for generating trajectories and transition distributions."""
 import math
-from pathlib import Path
-import pickle
 from typing import Callable, List, Mapping, NamedTuple, Optional, Sequence
 
 from imitation.data.rollout import (
@@ -11,7 +9,6 @@ from imitation.data.rollout import (
 )
 from imitation.data.types import AnyPath, TrajectoryWithRew, TransitionsWithRew
 from imitation.data.types import load as load_trajectories
-from imitation.data.types import path_to_str
 import numpy as np
 from stable_baselines3.common.vec_env import VecEnv
 import torch
@@ -82,36 +79,7 @@ def _get_dynamic_trajectories(
     min_timesteps: Optional[int],
     min_episodes: Optional[int],
 ) -> Sequence[TrajectoryWithRew]:
-    # TODO: this code appears in similar form in imitation
-    # (in policies/serialize.py), can we refactor?
-    model_path = None
-    if agent_path is not None:
-        policy_dir = Path(path_to_str(agent_path))
-        if not policy_dir.is_dir():
-            raise FileNotFoundError(
-                f"path={agent_path} needs to be a directory containing model.zip and "
-                "optionally vec_normalize.pkl."
-            )
-
-        model_path = policy_dir / "model.zip"
-        if not model_path.is_file():
-            raise FileNotFoundError(f"Could not find {model_path}")
-
-        normalize_path = policy_dir / "vec_normalize.pkl"
-        try:
-            with open(normalize_path, "rb") as f:
-                vec_normalize = pickle.load(f)
-        except FileNotFoundError:
-            # We did not use VecNormalize during training, skip
-            pass
-        else:
-            vec_normalize.training = False
-            vec_normalize.norm_reward = False
-            vec_normalize.set_venv(venv)
-            # wrap the environment in the vec normalize wrapper
-            venv = vec_normalize
-
-    policy = get_policy(random_prob, model_path, venv.action_space)
+    policy = get_policy(random_prob, agent_path, venv.action_space)
 
     return generate_trajectories(
         policy,

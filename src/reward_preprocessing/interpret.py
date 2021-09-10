@@ -1,9 +1,6 @@
 from typing import Any, Mapping
-import warnings
 
-from imitation.rewards.reward_nets import BasicRewardNet
 from sacred import Experiment
-from stable_baselines3 import PPO
 import torch
 import wandb
 
@@ -42,7 +39,6 @@ add_observers(ex)
 @ex.config
 def config():
     run_dir = "runs/interpret"
-    agent_path = None  # path to the agent to use for sampling (without extension)
     model_path = None  # path to the model to be interpreted (with extension)
     gamma = 0.99  # discount rate (used for all potential shapings)
     model_type = "ss"  # type of reward model, either 's', 'sa', 'ss' or 'sas'
@@ -56,7 +52,6 @@ def config():
 @ex.automain
 def main(
     model_path: str,
-    agent_path: str,
     gamma: float,
     model_type: str,
     wb: Mapping[str, Any],
@@ -64,42 +59,13 @@ def main(
     _config,
 ):
     env = create_env()
-    agent = None
-    if agent_path:
-        agent = PPO.load(agent_path)
-        if agent.gamma != gamma:
-            warnings.warn("Agent was trained with different gamma value")
 
     if torch.cuda.is_available():
         device = torch.device("cuda")
     else:
         device = torch.device("cpu")
 
-    if model_type == "s":
-        use_action = False
-        use_next_state = False
-    elif model_type == "sa":
-        use_action = True
-        use_next_state = False
-    elif model_type == "ss":
-        use_action = False
-        use_next_state = True
-    elif model_type == "sas":
-        use_action = True
-        use_next_state = True
-    else:
-        raise ValueError(
-            f"Unknown model type '{model_type}', expected 's', 'sa', 'ss' or 'sas'."
-        )
-
-    model = BasicRewardNet(
-        env.observation_space,
-        env.action_space,
-        use_action=use_action,
-        use_next_state=use_next_state,
-        **model_kwargs,
-    ).to(device)
-    model.load_state_dict(torch.load(model_path, map_location=device))
+    model = torch.load(model_path, map_location=device)
 
     use_wandb = False
     if wb:
@@ -115,7 +81,7 @@ def main(
     model = add_noise_potential(model, gamma)
     model = sparsify(model, device=device, gamma=gamma, use_wandb=use_wandb)
     model.eval()
-    plot_rewards(model, device)
+    plot_rewards(model)
     visualize_transitions(model)
     visualize_rollout(model)
     env.close()

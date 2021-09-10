@@ -4,18 +4,15 @@
 set -euxo pipefail
 
 env_name="$1"
+AGENT="results/agents/$env_name"
+MODEL="results/models/$env_name"
+ROLLOUTS="[(0, \"$AGENT\", \"expert\"), (1, None, \"random\"), (0.5, \"$AGENT\", \"mixed\")]"
 
-if [[ "$env_name" == half_cheetah ]]; then
-    MODEL_TYPE=sas
-else
-    MODEL_TYPE=sa
-fi
-
-exec pipenv run python src/reward_preprocessing/interpret.py with \
+exec xvfb-run poetry run python src/reward_preprocessing/interpret.py with \
     model_path="results/models/$env_name.pt" \
-    agent_path="results/agents/$env_name" \
-    sparsify.data_path="results/data/$env_name" \
-    rewards.data_path="results/data/$env_name" \
-    model_type="$MODEL_TYPE" \
+    "rewards.rollouts=$ROLLOUTS" \
+    "transition_visualization.rollouts=$ROLLOUTS" \
+    "rollout_visualization.rollouts=$ROLLOUTS" \
+    "sparsify.rollouts=$ROLLOUTS" \
     "env.$env_name" \
     "${@:2}"
