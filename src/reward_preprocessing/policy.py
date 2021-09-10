@@ -95,7 +95,7 @@ def get_policy(
 
 def mix_policies(
     policy1: Policy, policy2: Policy, proportion: float, seed: int = 0
-) -> Callable:
+) -> PolicyCallable:
     """Create a policy that chooses randomly at each step between
     two policies.
 
