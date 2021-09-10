@@ -12,11 +12,7 @@ from reward_preprocessing.data import (
     get_trajectories,
     transitions_collate_fn,
 )
-from reward_preprocessing.env.env_ingredient import (
-    create_env,
-    create_visualization_env,
-    env_ingredient,
-)
+from reward_preprocessing.env.env_ingredient import create_env, env_ingredient
 from reward_preprocessing.utils import sacred_save_fig, use_rollouts
 
 reward_ingredient = Ingredient("rewards", ingredients=[env_ingredient])
@@ -32,6 +28,8 @@ def config():
     min_reward = -10  # lower bound for the histogram
     max_reward = 10  # upper bound for the histogram
     bins = 20  # number of bins for the histogram
+    # overrides the default from use_rollouts:
+    steps = 1000  # number of transitions to sample for histogram
     rollout_steps = 1000  # length of the plotted rollouts
     _ = locals()  # make flake8 happy
     del _
@@ -98,7 +96,7 @@ def plot_rewards(
     for i, cfg in enumerate(rollouts):
         predicted_rewards = np.array([])
         trajectories = get_trajectories(
-            cfg, create_visualization_env, min_timesteps=rollout_steps, seed=_seed
+            cfg, create_env, min_timesteps=rollout_steps, seed=_seed
         )
         transitions = flatten_trajectories_with_rew(trajectories)
         actual_rewards = transitions.rews
