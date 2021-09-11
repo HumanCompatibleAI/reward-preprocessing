@@ -1,5 +1,5 @@
 # base stage contains just dependencies.
-FROM python:3.9.6-slim as dependencies
+FROM python:3.7.11-slim as dependencies
 ARG DEBIAN_FRONTEND=noninteractive
 
 # without tini, xvfb-run hangs
@@ -54,14 +54,15 @@ WORKDIR /reward_preprocessing
 # Copy only necessary dependencies to build virtual environment.
 # This minimizes how often this layer needs to be rebuilt.
 COPY poetry.lock pyproject.toml ./
-# Clear the cache immediately. Annoyingly, there doesn't seem to be a good
-# option for confirming, so we just pipe yes into it
-# (see https://github.com/python-poetry/poetry/issues/521)
-RUN poetry install --no-interaction --no-ansi && yes | poetry cache clear . --all
+# Ideally, we'd clear the poetry cache but this seems annoyingly
+# difficult and not worth getting right for this project
+# (I've tried some things from https://github.com/python-poetry/poetry/issues/521
+# without success)
+RUN poetry install --no-interaction --no-ansi
 # HACK: make sure we have all the dependencies of imitation but then uninstall
 # imitation itself. We want to use the git version of that and that changes too
 # frequently to include in this stage
-RUN poetry run pip install imitation && poetry run pip uninstall --yes imitation && poetry run pip cache purge
+RUN poetry run pip install git+https://github.com/HumanCompatibleAI/imitation && poetry run pip uninstall --yes imitation && poetry run pip cache purge
 
 # clear the directory again (this is necessary so that CircleCI can checkout
 # into the directory)
