@@ -16,6 +16,11 @@ pip install git+https://github.com/HumanCompatibleAI/imitation
 virtual environment.
 Use `poetry shell` to start a shell inside this virtual environment.
 
+Note on the python version: make sure that your installation of `imitation`
+and of `reward_preprocessing` use the same version of Python, otherwise
+you might run into issues when unpickling `imitation` models for use in
+`reward_preprocessing`.
+
 TODO: the extra step for installing `imitation` is because I use it in editable mode, which `poetry` apparently doesn't yet support that well.
 In the long term, `imitation` should just be part of `pyproject.toml`.
 
