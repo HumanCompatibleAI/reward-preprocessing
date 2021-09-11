@@ -134,7 +134,7 @@ def model(env):
 def model_path(model, tmp_path):
     """Return a path to a stored (untrained) reward model."""
     path = tmp_path / "model.pt"
-    torch.save(model.state_dict(), path)
+    torch.save(model, path)
     # we don't clean up here -- the tmp_path fixture takes care
     # of deleting the directory
     return path

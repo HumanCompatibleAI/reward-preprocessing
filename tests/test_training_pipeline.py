@@ -17,12 +17,11 @@ def test_reward_training_experiment(env, data_path, tmp_path):
     )
 
 
-def test_interpret_experiment(env, model_path, agent_path, tmp_path):
+def test_interpret_experiment(env, model_path, tmp_path):
     interpret_ex.run(
         config_updates={
             "run_dir": str(tmp_path),
             "model_path": str(model_path),
-            "agent_path": str(agent_path),
             "sparsify.enabled": True,
             "sparsify.steps": 2,
             "sparsify.batch_size": 2,
