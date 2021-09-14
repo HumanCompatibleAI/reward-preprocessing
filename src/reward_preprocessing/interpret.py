@@ -41,8 +41,6 @@ def config():
     run_dir = "runs/interpret"
     model_path = None  # path to the model to be interpreted (with extension)
     gamma = 0.99  # discount rate (used for all potential shapings)
-    model_type = "ss"  # type of reward model, either 's', 'sa', 'ss' or 'sas'
-    model_kwargs = {}  # additional kwargs for BasicRewardNet
     wb = {}  # kwargs for wandb.init()
 
     _ = locals()  # make flake8 happy
@@ -53,9 +51,7 @@ def config():
 def main(
     model_path: str,
     gamma: float,
-    model_type: str,
     wb: Mapping[str, Any],
-    model_kwargs: Mapping[str, Any],
     _config,
 ):
     env = create_env()

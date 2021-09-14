@@ -102,9 +102,9 @@ def sparsify(
                 running_loss = 0.0
 
     try:
-        fig = model.plot(env)
+        fig = model.plot()
         fig.suptitle("Learned potential")
-        sacred_save_fig(fig, _run, "potential")
+        sacred_save_fig(fig, _run, "sparsify_potential")
     except NotImplementedError:
         print("Potential can't be plotted, skipping")
 

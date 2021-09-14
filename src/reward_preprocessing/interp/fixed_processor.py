@@ -56,9 +56,9 @@ def add_fixed_potential(
     )
 
     try:
-        fig = wrapped_model.plot(env)
-        fig.suptitle("Learned potential")
-        sacred_save_fig(fig, _run, "potential")
+        fig = wrapped_model.plot()
+        fig.suptitle("Hard-coded potential")
+        sacred_save_fig(fig, _run, "fixed_potential")
     except NotImplementedError:
         print("Potential can't be plotted, skipping")
 

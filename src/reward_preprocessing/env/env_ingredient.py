@@ -34,8 +34,8 @@ def empty_maze():
 
 @env_ingredient.named_config
 def mountain_car():
-    name = "MountainCar-v0"
-    stats_path = "results/stats/mountain_car.pkl"
+    name = "seals/MountainCar-v0"
+    stats_path = "results/agents/mountain_car/vec_normalize.pkl"
     normalize = True
     _ = locals()  # make flake8 happy
     del _

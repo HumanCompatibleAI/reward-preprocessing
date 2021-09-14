@@ -51,7 +51,7 @@ def add_noise_potential(
     model = wrapped_model
 
     try:
-        fig = model.plot(env)
+        fig = model.plot()
         fig.suptitle("Noise potential")
         sacred_save_fig(fig, _run, "noise_potential")
     except NotImplementedError:

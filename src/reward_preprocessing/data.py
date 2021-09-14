@@ -135,7 +135,7 @@ def get_transition_dataset(
     ]
 
     # Finally, stack all the transitions together
-    return TransitionsWithRew(
+    out = TransitionsWithRew(
         obs=np.concatenate([t.obs for t in all_transitions]),
         acts=np.concatenate([t.acts for t in all_transitions]),
         next_obs=np.concatenate([t.next_obs for t in all_transitions]),
@@ -143,6 +143,12 @@ def get_transition_dataset(
         dones=np.concatenate([t.dones for t in all_transitions]),
         infos=np.concatenate([t.infos for t in all_transitions]),
     )
+
+    # make sure we return exactly num transitions
+    # TODO: there is a bias here by discarding transitions at the end
+    # but it should be small because the number of transitions for each
+    # rollout config is off by at most 1.
+    return out[:num]
 
 
 # TODO: this is similar to the version from imitation,

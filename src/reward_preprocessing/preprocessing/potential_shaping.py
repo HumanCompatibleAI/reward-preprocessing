@@ -84,13 +84,9 @@ class PotentialShaping(Preprocessor):
             "Random initialization is not implemented for this type of potential."
         )
 
-    def plot(self, env: gym.Env) -> plt.Figure:
+    def plot(self) -> plt.Figure:
         """Plot the potential if possible.
         The type of plot depends on the type of potential.
-
-        Args:
-            env (gym.Env): the environment for which this potential is used
-                (needed for some types of plots)
 
         Raises:
             NotImplementedError: if plotting isn't implemented for this type
@@ -115,8 +111,8 @@ class PytorchPotentialShaping(PotentialShaping):
     ):
         super().__init__(model, potential, gamma)
 
-    def plot(self, env: gym.Env) -> plt.Figure:
-        space = env.observation_space
+    def plot(self) -> plt.Figure:
+        space = self.observation_space
         if not isinstance(space, gym.spaces.Box) or space.shape != (2,):
             # we don't know how to handle state spaces that aren't 2D in general
             raise NotImplementedError(
@@ -220,14 +216,14 @@ class MazelabPotentialShaping(PotentialShaping):
         nn.init.normal_(self._data, mean=mean, std=std)
         self._data.requires_grad = False
 
-    def plot(self, env: gym.Env) -> plt.Figure:
+    def plot(self) -> plt.Figure:
         fig, ax = plt.subplots()
 
         im = ax.imshow(
             self.potential_data.detach()
             .cpu()
             .numpy()
-            .reshape(*env.observation_space.shape)
+            .reshape(*self.observation_space.shape)
         )
         ax.set_axis_off()
         fig.colorbar(im, ax=ax)
