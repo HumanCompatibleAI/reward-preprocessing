@@ -119,11 +119,14 @@ def plot_rewards(
         ax[i].plot(
             actual_rewards,
             label="Original reward",
+            linewidth=1,
         )
         ax[i].plot(
             predicted_rewards,
             label="Model output",
+            linewidth=1,
         )
+        ax[i].axhline(0, linewidth=1, color="black")
         ax[i].set_ylim(top=max_reward, bottom=min_reward)
         ax[i].set_xlabel("time step")
         ax[i].set_ylabel("reward")
