@@ -21,6 +21,7 @@ from .fixed_processor import add_fixed_potential, fixed_ingredient
 from .noise import add_noise_potential, noise_ingredient
 from .plot_rewards import plot_rewards, reward_ingredient
 from .sparsify import sparsify, sparsify_ingredient
+from .value_net_shaping import add_value_net_potential, value_net_ingredient
 from .visualize_rollout import rollout_ingredient, visualize_rollout
 from .visualize_transitions import transition_ingredient, visualize_transitions
 
@@ -37,4 +38,6 @@ __all__ = [
     "add_fixed_potential",
     "reward_ingredient",
     "plot_rewards",
+    "value_net_ingredient",
+    "add_value_net_potential",
 ]

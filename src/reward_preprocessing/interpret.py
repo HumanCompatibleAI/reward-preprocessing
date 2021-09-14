@@ -8,6 +8,7 @@ from reward_preprocessing.env import create_env, env_ingredient
 from reward_preprocessing.interp import (
     add_fixed_potential,
     add_noise_potential,
+    add_value_net_potential,
     fixed_ingredient,
     noise_ingredient,
     plot_rewards,
@@ -16,6 +17,7 @@ from reward_preprocessing.interp import (
     sparsify,
     sparsify_ingredient,
     transition_ingredient,
+    value_net_ingredient,
     visualize_rollout,
     visualize_transitions,
 )
@@ -31,6 +33,7 @@ ex = Experiment(
         fixed_ingredient,
         transition_ingredient,
         reward_ingredient,
+        value_net_ingredient,
     ],
 )
 add_observers(ex)
@@ -75,6 +78,7 @@ def main(
 
     model = add_fixed_potential(model, gamma)
     model = add_noise_potential(model, gamma)
+    model = add_value_net_potential(model, gamma=gamma)
     model = sparsify(model, device=device, gamma=gamma, use_wandb=use_wandb)
     model.eval()
     plot_rewards(model)

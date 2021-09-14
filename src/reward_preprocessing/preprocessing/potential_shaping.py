@@ -7,12 +7,17 @@ states to floats. PotentialShaping is the most general case,
 while the other classes in this module are helper classes
 that use a particular type of potential.
 """
-from typing import Callable, Optional
+from typing import Callable, Optional, Type
 
 import gym
+from imitation.data.types import AnyPath, path_to_str
 from imitation.rewards.reward_nets import RewardNet
 import matplotlib.pyplot as plt
 import numpy as np
+from stable_baselines3 import PPO
+from stable_baselines3.common.on_policy_algorithm import OnPolicyAlgorithm
+from stable_baselines3.common.policies import ActorCriticPolicy
+from stable_baselines3.common.preprocessing import preprocess_obs
 import torch
 from torch import nn
 
@@ -98,6 +103,50 @@ class PotentialShaping(Preprocessor):
         raise NotImplementedError(
             "Potential plotting is not implemented for this type of potential."
         )
+
+
+class CriticPotentialShaping(PotentialShaping):
+    """Uses the critic from an SB3 ActorCriticPolicy as the potential."""
+
+    def __init__(
+        self,
+        model: RewardNet,
+        path: AnyPath,
+        gamma: float,
+        algorithm_cls: Type[OnPolicyAlgorithm] = PPO,
+    ):
+        """Initialize the potential shaping.
+
+        Args:
+            model: the RewardNet to be shaped
+            path: path to an SB3 OnPolicyAlgorithm's .zip file.
+                The algorithm's policy must be an ActorCriticPolicy.
+            gamma: discount factor used for potential shaping
+            algorithm_cls: the type of OnPolicyAlgorithm used to load
+                the file from `path`.
+        """
+        algorithm = algorithm_cls.load(path_to_str(path))
+        policy = algorithm.policy
+        assert isinstance(policy, ActorCriticPolicy)
+
+        # the value function isn't meant to be trained:
+        for p in policy.parameters():
+            p.requires_grad = False
+        policy.eval()
+
+        def potential(obs):
+            # This function is equivalent to how policy.forward() computes
+            # state values but we do only the computations necessary for the
+            # value function (ignoring the action probabilities).
+            preprocessed_obs = preprocess_obs(
+                obs, self.observation_space, normalize_images=self.normalize_images
+            )
+            features = policy.extract_features(preprocessed_obs)
+            shared_latent = policy.mlp_extractor.shared_net(features)
+            latent_vf = policy.mlp_extractor.value_net(shared_latent)
+            return policy.value_net(latent_vf)
+
+        super().__init__(model, potential, gamma)
 
 
 class PytorchPotentialShaping(PotentialShaping):
