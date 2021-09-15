@@ -1,17 +1,19 @@
 from dataclasses import dataclass, field
+from heapq import heappush, heappushpop
 import math
-from queue import PriorityQueue
 from typing import Tuple
 
-import gym
+from imitation.data.types import Transitions
+from imitation.rewards.reward_nets import RewardNet
 import matplotlib.pyplot as plt
 import numpy as np
 from sacred import Ingredient
-import torch
 
-from reward_preprocessing.models import RewardModel
-from reward_preprocessing.transition import get_transitions
-from reward_preprocessing.utils import sacred_save_fig
+from reward_preprocessing.env.env_ingredient import (
+    create_visualization_env,
+    env_ingredient,
+)
+from reward_preprocessing.utils import sacred_save_fig, use_rollouts
 
 
 @dataclass(order=True)
@@ -24,28 +26,50 @@ class TransitionData:
     img: Tuple[np.ndarray, np.ndarray] = field(compare=False)
 
 
-transition_ingredient = Ingredient("transition_visualization")
+class LimitedHeap:
+    """Maintain a list of the highest `size` values."""
+
+    def __init__(self, size: int):
+        self.size = size
+        self.heap = []
+
+    def push(self, x):
+        if len(self.heap) >= self.size:
+            # heappushpop will push x and then pop the item with
+            # the lowest value
+            heappushpop(self.heap, x)
+        else:
+            heappush(self.heap, x)
+
+    def __iter__(self):
+        return iter(self.heap)
+
+    def __len__(self):
+        return len(self.heap)
+
+
+transition_ingredient = Ingredient(
+    "transition_visualization", ingredients=[env_ingredient]
+)
+_, get_dataset = use_rollouts(transition_ingredient)
 
 
 @transition_ingredient.config
 def config():
     enabled = True
     num = 6  # number of transitions to plot
-    num_samples = 250  # number of transitions to sample (to select the max from)
+    # overrides the default from use_rollouts:
+    steps = 1000  # number of transitions to sample
     _ = locals()  # make flake8 happy
     del _
 
 
 @transition_ingredient.capture
 def visualize_transitions(
-    model: RewardModel,
-    env: gym.Env,
-    device,
+    model: RewardNet,
     num: int,
-    num_samples: int,
     enabled: bool,
     _run,
-    agent=None,
 ) -> None:
     """Visualizes a reward model by rendering certain interesting transitions
     together with the rewards predicted by the model."""
@@ -53,57 +77,54 @@ def visualize_transitions(
         return
     # we collect the transitions with the highest and lowest
     # rewards, as well as random ones
-    highest = PriorityQueue()
-    lowest = PriorityQueue()
-    random = PriorityQueue()
-    env.reset()
-    img = env.render(mode="rgb_array")
-    for i, (transition, actual_reward) in enumerate(
-        get_transitions(env, agent, num=num_samples)
-    ):
-        # we add a batch singleton dimension to the front
-        # use np.array because that works both if the field is already
-        # an array (such as the state) and if it's a scalar (such as done)
-        transition = transition.apply(lambda x: np.array([x]))
-        transition = transition.apply(torch.from_numpy)
-        transition = transition.apply(lambda x: x.float().to(device))
-        predicted_reward = model(transition).item()
+    highest = LimitedHeap(num)
+    lowest = LimitedHeap(num)
+    random = LimitedHeap(num)
+    prev_image = None
+    for i, transition in enumerate(get_dataset(create_visualization_env)):
+        actual_reward = transition["rews"]
 
-        next_img = env.render(mode="rgb_array")
+        # We add a batch singleton dimension to the front.
+        # Use np.array([...]) because that works both if the field is already
+        # an array and if it's a scalar.
+        inputs = Transitions(
+            obs=np.array([transition["obs"]]),
+            acts=np.array([transition["acts"]]),
+            next_obs=np.array([transition["next_obs"]]),
+            infos=None,
+            dones=np.array([transition["dones"]]),
+        )
+        predicted_reward = model(*model.preprocess(inputs)).item()
 
-        # TODO: storing all the images won't scale
-        # to other environments. Since we only need `num`
-        # entries anyway, we can limit the queue size to `num`
-        # and drop later entries
-        highest.put(
-            TransitionData(
-                # first field is the priority. Because Python's
-                # PriorityQueue returns elements from lowest to
-                # highest, we need a minus sign to get the
-                # highest rewards
-                -predicted_reward,
-                actual_reward,
-                predicted_reward,
-                (img, next_img),
+        image = transition["infos"]["rendering"]
+        # skip the first transition, where the previous image
+        # isn't set yet
+        if prev_image is not None:
+            highest.push(
+                TransitionData(
+                    predicted_reward,
+                    actual_reward,
+                    predicted_reward,
+                    (prev_image, image),
+                )
             )
-        )
-        lowest.put(
-            TransitionData(
-                predicted_reward,
-                actual_reward,
-                predicted_reward,
-                (img, next_img),
+            lowest.push(
+                TransitionData(
+                    -predicted_reward,
+                    actual_reward,
+                    predicted_reward,
+                    (prev_image, image),
+                )
             )
-        )
-        random.put(
-            TransitionData(
-                np.random.rand(),
-                actual_reward,
-                predicted_reward,
-                (img, next_img),
+            random.push(
+                TransitionData(
+                    np.random.rand(),
+                    actual_reward,
+                    predicted_reward,
+                    (prev_image, image),
+                )
             )
-        )
-        img = next_img
+        prev_image = image
 
     n_cols = 2
     n_rows = math.ceil(num / n_cols)
@@ -121,8 +142,7 @@ def visualize_transitions(
         )
         fig.suptitle(title)
         ax = ax.reshape(-1)
-        for i in range(0, 2 * num, 2):
-            data = queue.get()
+        for i, data in zip(range(0, 2 * num, 2), queue):
             ax[i].imshow(data.img[0])
             ax[i].text(
                 1.1,

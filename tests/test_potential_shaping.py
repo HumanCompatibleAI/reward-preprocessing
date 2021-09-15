@@ -1,36 +1,49 @@
+import gym
+from imitation.data.types import Transitions
+from imitation.rewards.reward_nets import BasicRewardNet
+import numpy as np
 import torch
 
-from reward_preprocessing.models import MlpRewardModel
 from reward_preprocessing.preprocessing import PotentialShaping
-from reward_preprocessing.transition import Transition
 
 
 def test_dummy_potential():
     # create a reward model
-    model = MlpRewardModel((5, 5))
+    space = gym.spaces.Box(low=-1, high=1, shape=(5, 5))
+    model = BasicRewardNet(space, space)
+    gamma = 0.9
+
     # create a dummy potential shaping: the potential phi(s) is simply
     # the sum of all the entries of s
-    gamma = 0.9
-    shaping = PotentialShaping(model, torch.sum, gamma)
+    def potential(s):
+        # we don't want to sum away the batch dimension
+        out = s.view(s.size(0), -1).sum(dim=1)
+        assert out.size(0) == s.size(0)
+        assert out.ndim == 1
+        return out
 
-    torch.manual_seed(0)
+    shaping = PotentialShaping(model, potential, gamma)
+
+    np.random.seed(0)
     # create a random transition
-    state = torch.randn(1, 5, 5)
-    action = None
-    next_state = torch.randn(1, 5, 5)
-    done = torch.tensor([False])
-    transition = Transition(state, action, next_state, done)
+    state = np.random.randn(1, 5, 5)
+    action = np.random.randn(1, 5, 5)
+    next_state = np.random.randn(1, 5, 5)
+    done = np.array([False])
+    transition = Transitions(state, action, None, next_state, done)
 
-    original = model(transition)
-    shaped = shaping(transition)
+    original = model(*model.preprocess(transition))
+    shaped = shaping(*model.preprocess(transition))
 
-    assert shaped == original + gamma * torch.sum(next_state) - torch.sum(state)
+    assert shaped == original + gamma * potential(
+        torch.as_tensor(next_state, dtype=torch.float32)
+    ) - potential(torch.as_tensor(state, dtype=torch.float32))
 
     # now check that the terminal state has potential 0
-    done = torch.tensor([True])
-    transition = Transition(state, action, next_state, done)
+    done = np.array([True])
+    transition = Transitions(state, action, None, next_state, done)
 
-    original = model(transition)
-    shaped = shaping(transition)
+    original = model(*model.preprocess(transition))
+    shaped = shaping(*model.preprocess(transition))
 
-    assert shaped == original - torch.sum(state)
+    assert shaped == original - potential(torch.as_tensor(state, dtype=torch.float32))

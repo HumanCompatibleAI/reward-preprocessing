@@ -2,6 +2,7 @@ from typing import Any, Iterable, Mapping, Optional
 
 import gym
 from sacred import Ingredient
+import seals  # noqa: F401
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
 from reward_preprocessing.utils import instantiate
@@ -33,20 +34,33 @@ def empty_maze():
 
 @env_ingredient.named_config
 def mountain_car():
-    name = "MountainCar-v0"
-    stats_path = "results/stats/mountain_car.pkl"
+    name = "seals/MountainCar-v0"
+    stats_path = "results/agents/mountain_car/vec_normalize.pkl"
     normalize = True
     _ = locals()  # make flake8 happy
     del _
 
 
 @env_ingredient.named_config
+def pendulum():
+    name = "Pendulum-v0"
+    _ = locals()  # make flake8 happy
+    del _
+
+
+@env_ingredient.named_config
 def half_cheetah():
-    name = "HalfCheetah-v3"
-    wrappers = ["sb3_contrib.common.wrappers.TimeFeatureWrapper"]
-    stats_path = "results/stats/half_cheetah.pkl"
-    options = {"exclude_current_positions_from_observation": False}
-    n_envs = 16
+    name = "seals/HalfCheetah-v0"
+    stats_path = "results/agents/half_cheetah/vec_normalize.pkl"
+    normalize = True
+    _ = locals()  # make flake8 happy
+    del _
+
+
+@env_ingredient.named_config
+def hopper():
+    name = "seals/Hopper-v0"
+    stats_path = "results/agents/hopper/vec_normalize.pkl"
     normalize = True
     _ = locals()  # make flake8 happy
     del _
@@ -98,3 +112,9 @@ def create_env(
             env = VecNormalize(env, norm_obs=True, norm_reward=False)
 
     return env
+
+
+def create_visualization_env(_seed: int):
+    return create_env(
+        n_envs=1, wrappers=["reward_preprocessing.utils.RenderWrapper"], _seed=_seed
+    )

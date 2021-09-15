@@ -7,17 +7,21 @@ states to floats. PotentialShaping is the most general case,
 while the other classes in this module are helper classes
 that use a particular type of potential.
 """
-from typing import Callable, Optional
+from typing import Callable, Optional, Type
 
 import gym
+from imitation.data.types import AnyPath, path_to_str
+from imitation.rewards.reward_nets import RewardNet
 import matplotlib.pyplot as plt
 import numpy as np
+from stable_baselines3 import PPO
+from stable_baselines3.common.on_policy_algorithm import OnPolicyAlgorithm
+from stable_baselines3.common.policies import ActorCriticPolicy
+from stable_baselines3.common.preprocessing import preprocess_obs
 import torch
 from torch import nn
 
 from reward_preprocessing.env.maze import get_agent_positions
-from reward_preprocessing.models import RewardModel
-from reward_preprocessing.transition import Transition
 from reward_preprocessing.utils import instantiate
 
 from .preprocessor import Preprocessor
@@ -27,7 +31,7 @@ class PotentialShaping(Preprocessor):
     """A preprocessor that adds a potential shaping to the reward.
 
     Args:
-        model: the RewardModel to be wrapped
+        model: the RewardNet to be wrapped
         potential: a Callable that receives a batch of states and returns
             a batch of scalars.
             If the potential is itself a torch.nn.Module, it will become
@@ -37,7 +41,7 @@ class PotentialShaping(Preprocessor):
 
     def __init__(
         self,
-        model: RewardModel,
+        model: RewardNet,
         potential: Callable,
         gamma: float,
     ):
@@ -45,13 +49,28 @@ class PotentialShaping(Preprocessor):
         self.potential = potential
         self.gamma = gamma
 
-    def forward(self, transitions: Transition) -> torch.Tensor:
-        rewards = self.model(transitions)
-        current_potential = self.potential(transitions.state)
+    def forward(
+        self,
+        state: torch.Tensor,
+        action: torch.Tensor,
+        next_state: torch.Tensor,
+        done: torch.Tensor,
+    ) -> torch.Tensor:
+        rewards = self.model(state, action, next_state, done)
+        if rewards.ndim > 1:
+            rewards = rewards.squeeze(dim=1)
+        current_potential = self.potential(state)
+        if current_potential.ndim > 1:
+            current_potential = current_potential.squeeze(dim=1)
+        # Make sure that there isn't any unwanted broadcasting
+        # (which could happen if one of these has singleton dimensions)
+        assert done.shape == current_potential.shape
+        next_potential = self.potential(next_state)
+        if next_potential.ndim > 1:
+            next_potential = next_potential.squeeze(dim=1)
         # if the next state is final, then we set it's potential to zero
-        next_potential = torch.logical_not(transitions.done) * self.potential(
-            transitions.next_state
-        )
+        next_potential *= torch.logical_not(done)
+        assert rewards.shape == next_potential.shape
         return rewards + self.gamma * next_potential - current_potential
 
     def random_init(self, **kwargs) -> None:
@@ -70,13 +89,9 @@ class PotentialShaping(Preprocessor):
             "Random initialization is not implemented for this type of potential."
         )
 
-    def plot(self, env: gym.Env) -> plt.Figure:
+    def plot(self) -> plt.Figure:
         """Plot the potential if possible.
         The type of plot depends on the type of potential.
-
-        Args:
-            env (gym.Env): the environment for which this potential is used
-                (needed for some types of plots)
 
         Raises:
             NotImplementedError: if plotting isn't implemented for this type
@@ -90,19 +105,63 @@ class PotentialShaping(Preprocessor):
         )
 
 
+class CriticPotentialShaping(PotentialShaping):
+    """Uses the critic from an SB3 ActorCriticPolicy as the potential."""
+
+    def __init__(
+        self,
+        model: RewardNet,
+        path: AnyPath,
+        gamma: float,
+        algorithm_cls: Type[OnPolicyAlgorithm] = PPO,
+    ):
+        """Initialize the potential shaping.
+
+        Args:
+            model: the RewardNet to be shaped
+            path: path to an SB3 OnPolicyAlgorithm's .zip file.
+                The algorithm's policy must be an ActorCriticPolicy.
+            gamma: discount factor used for potential shaping
+            algorithm_cls: the type of OnPolicyAlgorithm used to load
+                the file from `path`.
+        """
+        algorithm = algorithm_cls.load(path_to_str(path))
+        policy = algorithm.policy
+        assert isinstance(policy, ActorCriticPolicy)
+
+        # the value function isn't meant to be trained:
+        for p in policy.parameters():
+            p.requires_grad = False
+        policy.eval()
+
+        def potential(obs):
+            # This function is equivalent to how policy.forward() computes
+            # state values but we do only the computations necessary for the
+            # value function (ignoring the action probabilities).
+            preprocessed_obs = preprocess_obs(
+                obs, self.observation_space, normalize_images=self.normalize_images
+            )
+            features = policy.extract_features(preprocessed_obs)
+            shared_latent = policy.mlp_extractor.shared_net(features)
+            latent_vf = policy.mlp_extractor.value_net(shared_latent)
+            return policy.value_net(latent_vf)
+
+        super().__init__(model, potential, gamma)
+
+
 class PytorchPotentialShaping(PotentialShaping):
     """A potential shaping where the potential is a torch.nn.Module."""
 
     def __init__(
         self,
-        model: RewardModel,
+        model: RewardNet,
         potential: nn.Module,
         gamma: float,
     ):
         super().__init__(model, potential, gamma)
 
-    def plot(self, env: gym.Env) -> plt.Figure:
-        space = env.observation_space
+    def plot(self) -> plt.Figure:
+        space = self.observation_space
         if not isinstance(space, gym.spaces.Box) or space.shape != (2,):
             # we don't know how to handle state spaces that aren't 2D in general
             raise NotImplementedError(
@@ -146,8 +205,8 @@ class PytorchPotentialShaping(PotentialShaping):
 class LinearPotentialShaping(PytorchPotentialShaping):
     """A potential shaping preprocessor with a learned linear potential."""
 
-    def __init__(self, model: RewardModel, gamma: float):
-        in_size = np.product(model.state_shape)
+    def __init__(self, model: RewardNet, gamma: float):
+        in_size = np.product(model.observation_space.shape)
         potential = nn.Sequential(nn.Flatten(), nn.Linear(in_size, 1))
         super().__init__(model, potential, gamma)
 
@@ -157,20 +216,20 @@ class MlpPotentialShaping(PytorchPotentialShaping):
     Uses ReLU activation functions.
 
     Args:
-        state_shape: shape of the observations the environment produces
-            (these observations have to be arrays of floats, discrete
-            observations are not supported)
-        hidden_size (optional): number of neurons in each hidden layer
+        model: the RewardNet to be shaped
+        gamma: discount factor
+        hidden_size: number of neurons in each hidden layer
+        num_hidden: number of hidden layers
     """
 
     def __init__(
         self,
-        model: RewardModel,
+        model: RewardNet,
         gamma: float,
         hidden_size: int = 64,
         num_hidden: int = 1,
     ):
-        in_size = np.product(model.state_shape)
+        in_size = np.product(model.observation_space.shape)
         layers = [nn.Flatten(), nn.Linear(in_size, hidden_size), nn.ReLU()]
         if num_hidden < 1:
             raise ValueError(
@@ -189,9 +248,9 @@ class MlpPotentialShaping(PytorchPotentialShaping):
 class MazelabPotentialShaping(PotentialShaping):
     """A preprocessor that adds a learned potential shaping in Mazelab environment."""
 
-    def __init__(self, model: RewardModel, gamma: float):
+    def __init__(self, model: RewardNet, gamma: float):
         super().__init__(model, self._potential, gamma)
-        in_size = np.product(model.state_shape)
+        in_size = np.product(model.observation_space.shape)
         self._data = nn.Parameter(torch.zeros(in_size))
 
     def _potential(self, states):
@@ -206,14 +265,14 @@ class MazelabPotentialShaping(PotentialShaping):
         nn.init.normal_(self._data, mean=mean, std=std)
         self._data.requires_grad = False
 
-    def plot(self, env: gym.Env) -> plt.Figure:
+    def plot(self) -> plt.Figure:
         fig, ax = plt.subplots()
 
         im = ax.imshow(
             self.potential_data.detach()
             .cpu()
             .numpy()
-            .reshape(*env.observation_space.shape)
+            .reshape(*self.observation_space.shape)
         )
         ax.set_axis_off()
         fig.colorbar(im, ax=ax)

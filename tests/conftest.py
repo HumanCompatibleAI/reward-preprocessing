@@ -1,12 +1,12 @@
 import gym
-import numpy as np
+from imitation.data import types
+from imitation.data.rollout import generate_trajectories, make_sample_until
+from imitation.rewards.reward_nets import BasicRewardNet
 import pytest
 from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import DummyVecEnv
 import torch
 
-from reward_preprocessing.models import MlpRewardModel
-from reward_preprocessing.transition import get_transitions
 from reward_preprocessing.utils import get_env_name
 
 
@@ -125,14 +125,16 @@ def agent_path(agent, tmp_path):
 @pytest.fixture
 def model(env):
     """Return an (untrained) dummy reward model."""
-    return MlpRewardModel(env.observation_space.shape)
+    return BasicRewardNet(
+        env.observation_space, env.action_space, use_action=False, use_next_state=True
+    )
 
 
 @pytest.fixture
 def model_path(model, tmp_path):
     """Return a path to a stored (untrained) reward model."""
     path = tmp_path / "model.pt"
-    torch.save(model.state_dict(), path)
+    torch.save(model, path)
     # we don't clean up here -- the tmp_path fixture takes care
     # of deleting the directory
     return path
@@ -140,44 +142,15 @@ def model_path(model, tmp_path):
 
 @pytest.fixture
 def data_path(env, tmp_path):
-    """Return a path to a small dummy reward dataset."""
+    """Return a path to a small dummy trajectory dataset."""
 
-    path = tmp_path / "dataset.npz"
-    train_samples = 5
-    test_samples = 10
-
-    states = {}
-    actions = {}
-    next_states = {}
-    rewards = {}
-    dones = {}
-
-    for mode, num_samples in zip(["train", "test"], [train_samples, test_samples]):
-        states[mode] = []
-        actions[mode] = []
-        next_states[mode] = []
-        rewards[mode] = []
-        dones[mode] = []
-        for transition, reward in get_transitions(env, num=num_samples):
-            states[mode].append(transition.state)
-            actions[mode].append(transition.action)
-            next_states[mode].append(transition.next_state)
-            rewards[mode].append(reward)
-            dones[mode].append(transition.done)
-
-    np.savez(
-        str(path),
-        train_states=np.stack(states["train"], axis=0),
-        train_actions=np.array(actions["train"]),
-        train_next_states=np.stack(next_states["train"], axis=0),
-        train_rewards=np.array(rewards["train"]),
-        train_dones=np.array(dones["train"]),
-        test_states=np.stack(states["test"], axis=0),
-        test_actions=np.array(actions["test"]),
-        test_next_states=np.stack(next_states["test"], axis=0),
-        test_rewards=np.array(rewards["test"]),
-        test_dones=np.array(dones["test"]),
+    path = tmp_path / "dataset.pkl"
+    trajectories = generate_trajectories(
+        policy=None,
+        venv=env,
+        sample_until=make_sample_until(min_episodes=1, min_timesteps=None),
     )
+    types.save(path, trajectories)
 
     # we don't clean up here -- the tmp_path fixture takes care
     # of deleting the directory
