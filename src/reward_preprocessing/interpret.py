@@ -8,7 +8,6 @@ from reward_preprocessing.env import create_env, env_ingredient
 from reward_preprocessing.interp import (
     add_fixed_potential,
     add_noise_potential,
-    add_value_net_potential,
     fixed_ingredient,
     noise_ingredient,
     optimize,
@@ -16,6 +15,7 @@ from reward_preprocessing.interp import (
     plot_rewards,
     reward_ingredient,
     value_net_ingredient,
+    value_net_potential,
 )
 from reward_preprocessing.utils import add_observers
 
@@ -72,7 +72,9 @@ def main(
 
     model = add_fixed_potential(model, gamma)
     model = add_noise_potential(model, gamma)
-    model = add_value_net_potential(model, gamma=gamma)
+    shaping_model = value_net_potential(model, gamma=gamma)
     models = optimize(model, device=device, gamma=gamma, use_wandb=use_wandb)
+    if shaping_model is not None:
+        models["Value net shaping"] = shaping_model
     plot_rewards(models)
     env.close()

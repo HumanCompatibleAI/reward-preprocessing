@@ -21,7 +21,7 @@ from .fixed_processor import add_fixed_potential, fixed_ingredient
 from .noise import add_noise_potential, noise_ingredient
 from .optimize import optimize, optimize_ingredient
 from .plot_rewards import plot_rewards, reward_ingredient
-from .value_net_shaping import add_value_net_potential, value_net_ingredient
+from .value_net_shaping import value_net_ingredient, value_net_potential
 
 __all__ = [
     "optimize_ingredient",
@@ -33,5 +33,5 @@ __all__ = [
     "reward_ingredient",
     "plot_rewards",
     "value_net_ingredient",
-    "add_value_net_potential",
+    "value_net_potential",
 ]
