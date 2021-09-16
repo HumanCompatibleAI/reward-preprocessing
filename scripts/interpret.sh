@@ -13,6 +13,6 @@ exec xvfb-run poetry run python src/reward_preprocessing/interpret.py with \
     "rewards.rollouts=$ROLLOUTS" \
     "transition_visualization.rollouts=$ROLLOUTS" \
     "rollout_visualization.rollouts=$ROLLOUTS" \
-    "sparsify.rollouts=$ROLLOUTS" \
+    "optimize.rollouts=$ROLLOUTS" \
     "env.$env_name" \
     "${@:2}"

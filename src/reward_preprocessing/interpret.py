@@ -11,11 +11,11 @@ from reward_preprocessing.interp import (
     add_value_net_potential,
     fixed_ingredient,
     noise_ingredient,
+    optimize,
+    optimize_ingredient,
     plot_rewards,
     reward_ingredient,
     rollout_ingredient,
-    sparsify,
-    sparsify_ingredient,
     transition_ingredient,
     value_net_ingredient,
     visualize_rollout,
@@ -28,7 +28,7 @@ ex = Experiment(
     ingredients=[
         env_ingredient,
         rollout_ingredient,
-        sparsify_ingredient,
+        optimize_ingredient,
         noise_ingredient,
         fixed_ingredient,
         transition_ingredient,
@@ -79,7 +79,7 @@ def main(
     model = add_fixed_potential(model, gamma)
     model = add_noise_potential(model, gamma)
     model = add_value_net_potential(model, gamma=gamma)
-    model = sparsify(model, device=device, gamma=gamma, use_wandb=use_wandb)
+    model = optimize(model, device=device, gamma=gamma, use_wandb=use_wandb)
     model.eval()
     plot_rewards(model)
     visualize_transitions(model)

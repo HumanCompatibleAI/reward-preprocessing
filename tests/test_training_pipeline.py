@@ -7,9 +7,9 @@ def test_interpret_experiment(env, model_path, tmp_path):
         config_updates={
             "run_dir": str(tmp_path),
             "model_path": str(model_path),
-            "sparsify.enabled": True,
-            "sparsify.steps": 2,
-            "sparsify.batch_size": 2,
+            "optimize.enabled": True,
+            "optimize.steps": 2,
+            "optimize.batch_size": 2,
             "noise.enabled": True,
             "rewards.rollout_steps": 2,
             "rewards.bins": 2,
@@ -20,7 +20,7 @@ def test_interpret_experiment(env, model_path, tmp_path):
             "env.name": get_env_name(env),
         },
         named_configs=[
-            "sparsify.random_rollouts",
+            "optimize.random_rollouts",
             "rewards.random_rollouts",
             "transition_visualization.random_rollouts",
             "rollout_visualization.random_rollouts",

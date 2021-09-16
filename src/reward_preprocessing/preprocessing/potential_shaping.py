@@ -314,7 +314,7 @@ def instantiate_potential(
             raise ValueError(
                 f"No default potential shaping class for environment '{env_name}' "
                 "is set. You need to specify the type of potential to use "
-                "by setting sparsify.potential"
+                "by setting optimize.potential"
             )
         potential_name = DEFAULT_POTENTIALS[env_name]
 

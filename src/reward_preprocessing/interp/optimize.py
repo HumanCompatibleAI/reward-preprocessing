@@ -10,11 +10,11 @@ from reward_preprocessing.env import create_env, env_ingredient
 from reward_preprocessing.preprocessing.potential_shaping import instantiate_potential
 from reward_preprocessing.utils import get_env_name, sacred_save_fig, use_rollouts
 
-sparsify_ingredient = Ingredient("sparsify", ingredients=[env_ingredient])
-get_dataloader, _ = use_rollouts(sparsify_ingredient)
+optimize_ingredient = Ingredient("optimize", ingredients=[env_ingredient])
+get_dataloader, _ = use_rollouts(optimize_ingredient)
 
 
-@sparsify_ingredient.config
+@optimize_ingredient.config
 def config():
     enabled = False
     epochs = 1  # number of epochs to train for
@@ -29,8 +29,8 @@ def config():
     del _
 
 
-@sparsify_ingredient.capture
-def sparsify(
+@optimize_ingredient.capture
+def optimize(
     model: RewardNet,
     device,
     gamma: float,
@@ -104,7 +104,7 @@ def sparsify(
     try:
         fig = model.plot()
         fig.suptitle("Learned potential")
-        sacred_save_fig(fig, _run, "sparsify_potential")
+        sacred_save_fig(fig, _run, "optimize_potential")
     except NotImplementedError:
         print("Potential can't be plotted, skipping")
 
