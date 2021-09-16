@@ -15,11 +15,7 @@ from reward_preprocessing.interp import (
     optimize_ingredient,
     plot_rewards,
     reward_ingredient,
-    rollout_ingredient,
-    transition_ingredient,
     value_net_ingredient,
-    visualize_rollout,
-    visualize_transitions,
 )
 from reward_preprocessing.utils import add_observers
 
@@ -27,11 +23,9 @@ ex = Experiment(
     "interpret",
     ingredients=[
         env_ingredient,
-        rollout_ingredient,
         optimize_ingredient,
         noise_ingredient,
         fixed_ingredient,
-        transition_ingredient,
         reward_ingredient,
         value_net_ingredient,
     ],
@@ -79,9 +73,6 @@ def main(
     model = add_fixed_potential(model, gamma)
     model = add_noise_potential(model, gamma)
     model = add_value_net_potential(model, gamma=gamma)
-    model = optimize(model, device=device, gamma=gamma, use_wandb=use_wandb)
-    model.eval()
-    plot_rewards(model)
-    visualize_transitions(model)
-    visualize_rollout(model)
+    models = optimize(model, device=device, gamma=gamma, use_wandb=use_wandb)
+    plot_rewards(models)
     env.close()

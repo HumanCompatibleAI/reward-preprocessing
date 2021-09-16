@@ -282,8 +282,8 @@ class MazelabPotentialShaping(PotentialShaping):
 # dict mapping environment name to potential that will be used by default
 DEFAULT_POTENTIALS = {
     "EmptyMaze-v0": "MazelabPotentialShaping",
-    "MountainCar-v0": "LinearPotentialShaping",
-    "HalfCheetah-v3": "LinearPotentialShaping",
+    "seals/MountainCar-v0": "LinearPotentialShaping",
+    "seals/HalfCheetah-v0": "LinearPotentialShaping",
 }
 
 

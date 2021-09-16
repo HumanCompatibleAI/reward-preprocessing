@@ -1,4 +1,4 @@
-from typing import Any, Mapping
+from typing import Any, Mapping, Sequence
 
 from imitation.rewards.reward_nets import RewardNet
 from sacred import Ingredient
@@ -24,9 +24,13 @@ def config():
     log_every = 100  # log every n batches
     lr_decay_rate = None  # factor to multiply by on each LR decay
     lr_decay_every = 100  # decay the learning rate every n batches
+    objectives = ["l1"]  # names of the objectives to optimize
 
     _ = locals()  # make flake8 happy
     del _
+
+
+OBJECTIVES = {"l1": lambda x: x.abs().mean()}
 
 
 @optimize_ingredient.capture
@@ -36,77 +40,82 @@ def optimize(
     gamma: float,
     use_wandb: bool,
     enabled: bool,
-    batch_size: int,
     lr: float,
     lr_decay_rate: float,
     lr_decay_every: int,
     potential_options: Mapping[str, Any],
+    objectives: Sequence[str],
     log_every: int,
     potential: str,
     epochs: int,
     _run,
-) -> RewardNet:
+) -> Mapping[str, RewardNet]:
+    models = {"unmodified": model}
+
     if not enabled:
-        return model
+        return models
 
     env = create_env()
 
     env_name = get_env_name(env)
-    model = instantiate_potential(
-        env_name, potential, model=model, gamma=gamma, **potential_options
-    ).to(device)
-
-    train_loader = get_dataloader(create_env)
-
-    # the weights of the original model are automatically frozen,
-    # we only train the final potential shaping
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-    scheduler = None
-    if lr_decay_rate is not None:
-        scheduler = torch.optim.lr_scheduler.ExponentialLR(
-            optimizer, gamma=lr_decay_rate
-        )
-
-    def loss_fn(x):
-        return x.abs().mean()
-
-    running_loss = 0.0
-    step = 0
-    for e in range(epochs):
-        for i, inputs in tqdm(enumerate(train_loader)):
-            step += 1
-            optimizer.zero_grad()
-            loss = loss_fn(model(*model.preprocess(inputs)))
-            loss.backward()
-            optimizer.step()
-            if scheduler and i % lr_decay_every == lr_decay_every - 1:
-                scheduler.step()
-                if use_wandb:
-                    wandb.log(
-                        {"lr": scheduler.get_last_lr(), "epoch": e + 1}, step=step
-                    )
-                else:
-                    print(f"LR: {scheduler.get_last_lr()[0]:.2E}")
-            running_loss += loss.item()
-            if i % log_every == log_every - 1:
-                if use_wandb:
-                    wandb.log(
-                        {
-                            "loss/train": running_loss / log_every,
-                            "epoch": e + 1,
-                        },
-                        step=step,
-                    )
-                else:
-                    print(f"Loss: {running_loss / log_every:.3E}")
-                running_loss = 0.0
-
-    try:
-        fig = model.plot()
-        fig.suptitle("Learned potential")
-        sacred_save_fig(fig, _run, "optimize_potential")
-    except NotImplementedError:
-        print("Potential can't be plotted, skipping")
-
     env.close()
-    return model
+
+    for objective in objectives:
+        print(f"Optimizing {objective} objective")
+        loss_fn = OBJECTIVES[objective]
+
+        wrapped_model = instantiate_potential(
+            env_name, potential, model=model, gamma=gamma, **potential_options
+        ).to(device)
+
+        train_loader = get_dataloader(create_env)
+
+        # the weights of the original model are automatically frozen,
+        # we only train the final potential shaping
+        optimizer = torch.optim.Adam(wrapped_model.parameters(), lr=lr)
+        scheduler = None
+        if lr_decay_rate is not None:
+            scheduler = torch.optim.lr_scheduler.ExponentialLR(
+                optimizer, gamma=lr_decay_rate
+            )
+
+        running_loss = 0.0
+        step = 0
+        for e in range(epochs):
+            for i, inputs in tqdm(enumerate(train_loader)):
+                step += 1
+                optimizer.zero_grad()
+                loss = loss_fn(wrapped_model(*wrapped_model.preprocess(inputs)))
+                loss.backward()
+                optimizer.step()
+                if scheduler and i % lr_decay_every == lr_decay_every - 1:
+                    scheduler.step()
+                    if use_wandb:
+                        wandb.log(
+                            {"lr": scheduler.get_last_lr(), "epoch": e + 1}, step=step
+                        )
+                    else:
+                        print(f"LR: {scheduler.get_last_lr()[0]:.2E}")
+                running_loss += loss.item()
+                if i % log_every == log_every - 1:
+                    if use_wandb:
+                        wandb.log(
+                            {
+                                "loss/train": running_loss / log_every,
+                                "epoch": e + 1,
+                            },
+                            step=step,
+                        )
+                    else:
+                        print(f"Loss: {running_loss / log_every:.3E}")
+                    running_loss = 0.0
+        models[objective] = wrapped_model.eval()
+
+        try:
+            fig = wrapped_model.plot()
+            fig.suptitle(f"Learned potential with {objective} objective")
+            sacred_save_fig(fig, _run, f"optimize_potential_{objective}")
+        except NotImplementedError:
+            print("Potential can't be plotted, skipping")
+
+    return models

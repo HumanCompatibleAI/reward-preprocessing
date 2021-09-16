@@ -22,18 +22,12 @@ from .noise import add_noise_potential, noise_ingredient
 from .optimize import optimize, optimize_ingredient
 from .plot_rewards import plot_rewards, reward_ingredient
 from .value_net_shaping import add_value_net_potential, value_net_ingredient
-from .visualize_rollout import rollout_ingredient, visualize_rollout
-from .visualize_transitions import transition_ingredient, visualize_transitions
 
 __all__ = [
-    "rollout_ingredient",
-    "visualize_rollout",
     "optimize_ingredient",
     "optimize",
     "noise_ingredient",
     "add_noise_potential",
-    "visualize_transitions",
-    "transition_ingredient",
     "fixed_ingredient",
     "add_fixed_potential",
     "reward_ingredient",
