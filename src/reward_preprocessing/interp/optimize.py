@@ -29,8 +29,16 @@ def config():
     _ = locals()  # make flake8 happy
     del _
 
+def _local_mean_dist(x):
+    dists = x[None] - x[:, None]
+    means = (torch.exp(-dists.abs()) * x[None]).sum(1)
+    return ((x - means)**2).sum()
 
-OBJECTIVES = {"l1": lambda x: x.abs().mean()}
+OBJECTIVES = {
+    "l1": lambda x: x.abs().mean(),
+    "l_half": lambda x: x.abs().sqrt().mean(),
+    "local_mean": _local_mean_dist
+}
 
 
 @optimize_ingredient.capture
