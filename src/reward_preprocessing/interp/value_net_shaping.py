@@ -37,7 +37,9 @@ def value_net_potential(
 
     if path is None:
         raise ValueError("Path to algorithm containing critic must be set!")
-    zero_model = ZeroNet(model.observation_space, model.action_space, model.normalize_images)
+    zero_model = ZeroNet(
+        model.observation_space, model.action_space, model.normalize_images
+    )
     shaping_model = CriticPotentialShaping(zero_model, path, gamma)
 
     try:
