@@ -1,6 +1,7 @@
 from typing import Any, Iterable, Mapping, Optional
 
 import gym
+from imitation.envs import maze, sparse  # noqa: F401
 from sacred import Ingredient
 import seals  # noqa: F401
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
@@ -27,7 +28,16 @@ def config():
 def empty_maze():
     # this is currently the default anyway, but it's needed to
     # make the wrapper script work
-    name = "EmptyMaze-v0"
+    name = "imitation/EmptyMaze-v0"
+    _ = locals()  # make flake8 happy
+    del _
+
+
+@env_ingredient.named_config
+def empty_maze_dense():
+    # this is currently the default anyway, but it's needed to
+    # make the wrapper script work
+    name = "imitation/EmptyMazeDense-v0"
     _ = locals()  # make flake8 happy
     del _
 
@@ -61,6 +71,15 @@ def half_cheetah():
 def hopper():
     name = "seals/Hopper-v0"
     stats_path = "results/agents/hopper/vec_normalize.pkl"
+    normalize = True
+    _ = locals()  # make flake8 happy
+    del _
+
+
+@env_ingredient.named_config
+def sparse_reacher():
+    name = "imitation/SparseReacher-v0"
+    stats_path = "results/agents/sparse_reacher/vec_normalize.pkl"
     normalize = True
     _ = locals()  # make flake8 happy
     del _

@@ -76,5 +76,5 @@ def main(
     models = optimize(model, device=device, gamma=gamma, use_wandb=use_wandb)
     if shaping_model is not None:
         models["Value net shaping"] = shaping_model
-    plot_rewards(models)
+    plot_rewards(models, gamma=gamma)
     env.close()

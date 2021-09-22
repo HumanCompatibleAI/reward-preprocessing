@@ -8,6 +8,7 @@ import wandb
 
 from reward_preprocessing.env import create_env, env_ingredient
 from reward_preprocessing.preprocessing.potential_shaping import instantiate_potential
+from reward_preprocessing.preprocessing.preprocessor import ScaleShift
 from reward_preprocessing.utils import get_env_name, sacred_save_fig, use_rollouts
 
 optimize_ingredient = Ingredient("optimize", ingredients=[env_ingredient])
@@ -25,6 +26,7 @@ def config():
     lr_decay_rate = None  # factor to multiply by on each LR decay
     lr_decay_every = 100  # decay the learning rate every n batches
     objectives = ["l1"]  # names of the objectives to optimize
+    batch_size = 256  # batch size for the dataloader
 
     _ = locals()  # make flake8 happy
     del _
@@ -35,11 +37,15 @@ def _local_mean_dist(x):
     means = (torch.exp(-dists.abs()) * x[None]).sum(1)
     return ((x - means) ** 2).sum()
 
+def log_abs(x):
+    return (1 + x.abs()).log()
 
 OBJECTIVES = {
     "l1": lambda x: x.abs().mean(),
     "l_half": lambda x: x.abs().sqrt().mean(),
     "local_mean": _local_mean_dist,
+    "log": lambda x: (1 + x.abs()).log().mean(),
+    "smooth": lambda x: log_abs(x[1:] - x[:-1]).mean(),
 }
 
 
@@ -58,6 +64,7 @@ def optimize(
     log_every: int,
     potential: str,
     epochs: int,
+    batch_size: int,
     _run,
 ) -> Mapping[str, RewardNet]:
     models = {"unmodified": model}
@@ -73,12 +80,17 @@ def optimize(
     for objective in objectives:
         print(f"Optimizing {objective} objective")
         loss_fn = OBJECTIVES[objective]
-
+        wrapped_model = ScaleShift(model, scale=False)
         wrapped_model = instantiate_potential(
-            env_name, potential, model=model, gamma=gamma, **potential_options
+            env_name,
+            potential,
+            model=wrapped_model,
+            gamma=gamma,
+            freeze_model=False,
+            **potential_options,
         ).to(device)
 
-        train_loader = get_dataloader(create_env)
+        train_loader = get_dataloader(create_env, batch_size=batch_size)
 
         # the weights of the original model are automatically frozen,
         # we only train the final potential shaping
@@ -96,6 +108,18 @@ def optimize(
                 step += 1
                 optimizer.zero_grad()
                 loss = loss_fn(wrapped_model(*wrapped_model.preprocess(inputs)))
+                # loss = (
+                #     (
+                #         wrapped_model(*wrapped_model.preprocess(inputs))
+                #         - torch.as_tensor(
+                #             inputs.rews,
+                #             dtype=torch.float32,
+                #             device=wrapped_model.device,
+                #         )
+                #     )
+                #     .abs()
+                #     .mean()
+                # )
                 loss.backward()
                 optimizer.step()
                 if scheduler and i % lr_decay_every == lr_decay_every - 1:
