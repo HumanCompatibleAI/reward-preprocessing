@@ -1,32 +1,31 @@
 from typing import Any, Mapping, Sequence
 
+from imitation.data.types import Transitions
 from imitation.rewards.reward_nets import RewardNet
-from sacred import Ingredient
+import numpy as np
+from sacred import Experiment
 import torch
-from tqdm import tqdm
-import wandb
 
 from reward_preprocessing.env import create_env, env_ingredient
+from reward_preprocessing.interp.gridworld_plot import ACTION_DELTA, Actions
 from reward_preprocessing.preprocessing.potential_shaping import instantiate_potential
 from reward_preprocessing.preprocessing.preprocessor import ScaleShift
 from reward_preprocessing.utils import get_env_name, sacred_save_fig, use_rollouts
 
-optimize_ingredient = Ingredient("optimize", ingredients=[env_ingredient])
-get_dataloader, _ = use_rollouts(optimize_ingredient)
+optimize_tabular_ex = Experiment("optimize_tabular", ingredients=[env_ingredient])
 
 
-@optimize_ingredient.config
+@optimize_tabular_ex.config
 def config():
-    enabled = False
-    epochs = 1  # number of epochs to train for
+    gamma = 0.99  # discount rate
+    steps = 10000  # number of steps to train for
     potential = None  # class name of the potential
     potential_options = {}  # kwargs for the potential (other than gamma)
     lr = 0.01  # learning rate
     log_every = 100  # log every n batches
     lr_decay_rate = None  # factor to multiply by on each LR decay
     lr_decay_every = 100  # decay the learning rate every n batches
-    objectives = ["l1"]  # names of the objectives to optimize
-    batch_size = 256  # batch size for the dataloader
+    objectives = ["l1", "smooth"]  # names of the objectives to optimize
 
     _ = locals()  # make flake8 happy
     del _
@@ -51,13 +50,13 @@ OBJECTIVES = {
 }
 
 
-@optimize_ingredient.capture
-def optimize(
+@optimize_tabular_ex.capture
+def optimize_tabular(
     model: RewardNet,
     device,
     gamma: float,
-    use_wandb: bool,
     enabled: bool,
+    steps: int,
     lr: float,
     lr_decay_rate: float,
     lr_decay_every: int,
@@ -65,8 +64,6 @@ def optimize(
     objectives: Sequence[str],
     log_every: int,
     potential: str,
-    epochs: int,
-    batch_size: int,
     _run,
 ) -> Mapping[str, RewardNet]:
     models = {"unmodified": model}
@@ -74,9 +71,39 @@ def optimize(
     if not enabled:
         return models
 
-    env = create_env()
+    venv = create_env()
 
-    env_name = get_env_name(env)
+    env_name = get_env_name(venv)
+
+    # TODO: this is very brittle
+    env = venv.envs[0].unwrapped
+    env.reset()
+
+    states = []
+    next_states = []
+    actions = []
+    for state in range(env.observation_space.n):
+        for action in range(env.action_space.n):
+            delta = ACTION_DELTA[Actions(action)]
+            x, y = divmod(state, env.size)
+            next_x = x + delta[0]
+            next_y = y + delta[1]
+            if env._is_valid((next_x, next_y)):
+                next_state = env.size * next_x + next_y
+            else:
+                next_state = state
+            states.append(state)
+            next_states.append(next_state)
+            actions.append(action)
+
+    transitions = Transitions(
+        obs=np.array(states),
+        acts=np.array(actions),
+        next_obs=np.array(next_states),
+        dones=np.zeros(len(states), dtype=bool),
+        infos=np.array([{}] * len(states)),
+    )
+
     env.close()
 
     for objective in objectives:
@@ -92,8 +119,6 @@ def optimize(
             **potential_options,
         ).to(device)
 
-        train_loader = get_dataloader(create_env, batch_size=batch_size)
-
         # the weights of the original model are automatically frozen,
         # we only train the final potential shaping
         optimizer = torch.optim.Adam(wrapped_model.parameters(), lr=lr)
@@ -104,53 +129,29 @@ def optimize(
             )
 
         running_loss = 0.0
-        step = 0
-        for e in range(epochs):
-            for i, inputs in tqdm(enumerate(train_loader)):
-                step += 1
-                optimizer.zero_grad()
-                loss = loss_fn(
-                    wrapped_model(
-                        *wrapped_model.preprocess(
-                            inputs.obs, inputs.acts, inputs.next_obs, inputs.dones
-                        )
+
+        for i in range(steps):
+            optimizer.zero_grad()
+            # use the original model for preprocessing, the wrappers
+            # don't know about the tabular setting
+            loss = loss_fn(
+                wrapped_model(
+                    *model.preprocess(
+                        transitions.obs,
+                        transitions.acts,
+                        transitions.next_obs,
+                        transitions.dones,
                     )
                 )
-                # loss = (
-                #     (
-                #         wrapped_model(*wrapped_model.preprocess(inputs))
-                #         - torch.as_tensor(
-                #             inputs.rews,
-                #             dtype=torch.float32,
-                #             device=wrapped_model.device,
-                #         )
-                #     )
-                #     .abs()
-                #     .mean()
-                # )
-                loss.backward()
-                optimizer.step()
-                if scheduler and i % lr_decay_every == lr_decay_every - 1:
-                    scheduler.step()
-                    if use_wandb:
-                        wandb.log(
-                            {"lr": scheduler.get_last_lr(), "epoch": e + 1}, step=step
-                        )
-                    else:
-                        print(f"LR: {scheduler.get_last_lr()[0]:.2E}")
-                running_loss += loss.item()
-                if i % log_every == log_every - 1:
-                    if use_wandb:
-                        wandb.log(
-                            {
-                                "loss/train": running_loss / log_every,
-                                "epoch": e + 1,
-                            },
-                            step=step,
-                        )
-                    else:
-                        print(f"Loss: {running_loss / log_every:.3E}")
-                    running_loss = 0.0
+            )
+            loss.backward()
+            optimizer.step()
+            running_loss += loss.item()
+
+            if i % log_every == 0:
+                print(f"Step {i}, loss: ", running_loss)
+                running_loss = 0.0
+
         models[objective] = wrapped_model.eval()
 
         try:
@@ -161,3 +162,20 @@ def optimize(
             print("Potential can't be plotted, skipping")
 
     return models
+
+
+@optimize_tabular_ex.automain
+def main(
+    model_paths: Sequence[str],
+):
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+    else:
+        device = torch.device("cpu")
+
+    for path in model_paths:
+        print(f"Loading model from {path}")
+        model = torch.load(path, map_location=device)
+        preprocessed_models = optimize_tabular(model, device=device, gamma=gamma)
+        for objective, preprocessed_model in preprocessed_models.items():
+            torch.save(preprocessed_model, path + f".{objective}")

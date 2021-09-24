@@ -63,6 +63,7 @@ def main(
         densities[cfg.name] = density
 
     ncols = min(3, len(rollouts))
-    fig = plot_gridworld_rewards(densities, ncols=ncols, discount=0.99, normalizer=colors.LogNorm, vmin=1e-5)
+    fig = plot_gridworld_rewards(
+        densities, ncols=ncols, discount=0.99, normalizer=colors.LogNorm, vmin=1e-5
+    )
     fig.savefig(os.path.join(out_dir, "densities.pdf"))
-

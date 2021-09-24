@@ -87,8 +87,12 @@ def build_transitions(xlen: int, ylen: int, na: int) -> np.ndarray:
     states = np.arange(ns)
     xs = states % xlen
     ys = states // ylen
-    _make_transitions(transitions, Actions.LEFT.value, Actions.RIGHT.value, states, ys, ylen)
-    _make_transitions(transitions, Actions.DOWN.value, Actions.UP.value, states, xs, xlen)
+    _make_transitions(
+        transitions, Actions.LEFT.value, Actions.RIGHT.value, states, ys, ylen
+    )
+    _make_transitions(
+        transitions, Actions.DOWN.value, Actions.UP.value, states, xs, xlen
+    )
 
     return transitions
 
@@ -159,7 +163,10 @@ def _axis_formatting(ax: plt.Axes, xlen: int, ylen: int) -> None:
 
 
 def _reward_make_color_map(
-    reward_arrays: Iterable[np.ndarray], vmin: Optional[float], vmax: Optional[float], normalizer=mcolors.Normalize
+    reward_arrays: Iterable[np.ndarray],
+    vmin: Optional[float],
+    vmax: Optional[float],
+    normalizer=mcolors.Normalize,
 ) -> matplotlib.cm.ScalarMappable:
     if vmin is None:
         vmin = min(np.nanmin(arr) for arr in reward_arrays)
@@ -249,7 +256,9 @@ def _reward_draw(
     circle_radius_in = circle_radius_pt / 72
     corner_display = ax.transData.transform([0.0, 0.0])
     circle_radius_display = fig.dpi_scale_trans.transform([circle_radius_in, 0])
-    circle_radius_data = ax.transData.inverted().transform(corner_display + circle_radius_display)
+    circle_radius_data = ax.transData.inverted().transform(
+        corner_display + circle_radius_display
+    )
     annot_padding = 0.25 + 0.5 * circle_radius_data[0]
 
     triangle_patches = []
@@ -277,8 +286,12 @@ def _reward_draw(
             fn = _make_triangle
         patches = circle_patches if action == 0 else triangle_patches
         if hatch:  # draw the hatch using a different color
-            patches.append(fn(vert, tuple(color), linewidth=1, edgecolor=hatch_color, hatch=hatch))
-            patches.append(fn(vert, tuple(color), linewidth=1, edgecolor=edgecolor, fill=False))
+            patches.append(
+                fn(vert, tuple(color), linewidth=1, edgecolor=hatch_color, hatch=hatch)
+            )
+            patches.append(
+                fn(vert, tuple(color), linewidth=1, edgecolor=edgecolor, fill=False)
+            )
         else:
             patches.append(fn(vert, tuple(color), linewidth=1, edgecolor=edgecolor))
 
@@ -327,7 +340,9 @@ def plot_gridworld_rewards(
     width_ratios = [1] * ncols + [cbar_fraction]
     gs = fig.add_gridspec(nrows=nrows, ncols=ncols + 1, width_ratios=width_ratios)
 
-    mappable = _reward_make_color_map(reward_arrays.values(), vmin, vmax, normalizer=normalizer)
+    mappable = _reward_make_color_map(
+        reward_arrays.values(), vmin, vmax, normalizer=normalizer
+    )
     base_ax = fig.add_subplot(gs[0, 0])
     for idx, (pretty_name, reward) in enumerate(reward_arrays.items()):
         i = idx // ncols
@@ -352,15 +367,16 @@ def plot_gridworld_rewards(
 
     return fig
 
+
 def prepare_rewards(rewards: torch.Tensor) -> np.ndarray:
     """Convert a tabular reward from the Mazelab format
     to the one needed for the plotting utilities.
-    
+
     Args:
         rewards: (size ** 2, size ** 2) tensor, where size is the length
             of the gridworld. The first dimension indexes the state s,
             the second dimension the next state s'.
-            
+
     Returns: (size, size, 5) array where the first two dimensions index
         the state and the last one the action.
     """

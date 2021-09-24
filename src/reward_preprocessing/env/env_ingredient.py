@@ -13,7 +13,7 @@ env_ingredient = Ingredient("env")
 
 @env_ingredient.config
 def config():
-    name = "EmptyMaze-v0"  # gym environment id
+    name = None  # gym environment id
     options = {}  # gym env kwargs
     stats_path = None  # path to stats file for normalization (incl. extension)
     # list of complete gym wrapper names (incl. module), from inner- to outermost
@@ -25,19 +25,43 @@ def config():
 
 
 @env_ingredient.named_config
-def empty_maze():
-    # this is currently the default anyway, but it's needed to
-    # make the wrapper script work
-    name = "imitation/EmptyMaze-v0"
+def empty_maze_10():
+    name = "imitation/EmptyMaze10-v0"
     _ = locals()  # make flake8 happy
     del _
 
 
 @env_ingredient.named_config
-def empty_maze_dense():
-    # this is currently the default anyway, but it's needed to
-    # make the wrapper script work
-    name = "imitation/EmptyMazeDense-v0"
+def empty_maze_4():
+    name = "imitation/EmptyMaze4-v0"
+    _ = locals()  # make flake8 happy
+    del _
+
+
+@env_ingredient.named_config
+def dense():
+    options = {"shaping": "dense"}
+    _ = locals()  # make flake8 happy
+    del _
+
+
+@env_ingredient.named_config
+def antidense():
+    options = {"shaping": "antidense"}
+    _ = locals()  # make flake8 happy
+    del _
+
+
+@env_ingredient.named_config
+def random():
+    options = {"shaping": "random"}
+    _ = locals()  # make flake8 happy
+    del _
+
+
+@env_ingredient.named_config
+def path():
+    options = {"reward": "path"}
     _ = locals()  # make flake8 happy
     del _
 

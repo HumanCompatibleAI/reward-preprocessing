@@ -55,6 +55,13 @@ class Preprocessor(RewardNet):
         if self._was_training:
             self.model.train()
 
+    @property
+    def unwrapped(self):
+        if isinstance(self.model, Preprocessor):
+            return self.model.unwrapped
+        else:
+            return self.model
+
 
 class ScaleShift(Preprocessor):
     def __init__(

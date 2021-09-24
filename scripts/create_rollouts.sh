@@ -5,7 +5,8 @@ set -euxo pipefail
 
 env_name="$1"
 AGENT="results/agents/$env_name/model.zip"
-ROLLOUTS="[(0, \"$AGENT\", \"expert\"), (1, None, \"random\"), (0.5, \"$AGENT\", \"mixed\")]"
+# ROLLOUTS="[(0, \"$AGENT\", \"expert\"), (1, None, \"random\"), (0.5, \"$AGENT\", \"mixed\")]"
+ROLLOUTS="[(0, \"$AGENT\", \"expert\"), (1, None, \"random\")]"
 
 exec xvfb-run poetry run python src/reward_preprocessing/create_rollouts.py with \
     "rollouts=$ROLLOUTS" \

@@ -5,6 +5,8 @@ __pycache__/
 *.egg-info
 /runs
 /results
+/old_results
+/output
 /build
 /dist
 /wandb

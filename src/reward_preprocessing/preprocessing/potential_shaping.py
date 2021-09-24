@@ -8,10 +8,10 @@ while the other classes in this module are helper classes
 that use a particular type of potential.
 """
 import math
-from typing import Callable, Optional, Type
+from typing import Callable, Optional, Tuple, Type
 
 import gym
-from imitation.data.types import AnyPath, path_to_str
+from imitation.data.types import AnyPath, Transitions, path_to_str
 from imitation.rewards.reward_nets import RewardNet
 import matplotlib.pyplot as plt
 import numpy as np
@@ -115,12 +115,7 @@ class PotentialShaping(Preprocessor):
         xx, yy = np.meshgrid(xs, ys)
         values = np.stack([xx, yy], axis=2).reshape(-1, 2)
 
-        out = (
-            self.potential(torch.as_tensor(values))
-            .detach()
-            .cpu()
-            .numpy()
-        )
+        out = self.potential(torch.as_tensor(values)).detach().cpu().numpy()
 
         out = out.reshape(grid_size, grid_size)
         fig, ax = plt.subplots()
@@ -282,11 +277,7 @@ class TabularPotentialShaping(PotentialShaping):
         self._data = nn.Parameter(torch.zeros(in_size))
 
     def _potential(self, states):
-        # The input should be one-hot encoded
-        assert states.ndim == 2
-        # turn the one-hot encoding into agent positions
-        positions = states.argmax(-1)
-        return self._data[positions]
+        return self._data[states]
 
     @property
     def potential_data(self) -> torch.Tensor:
@@ -303,20 +294,65 @@ class TabularPotentialShaping(PotentialShaping):
         # mazes
         n = int(math.sqrt(self.observation_space.n))
 
-        im = ax.imshow(
-            self.potential_data.detach()
-            .cpu()
-            .numpy()
-            .reshape(n, n)
-        )
+        im = ax.imshow(self.potential_data.detach().cpu().numpy().reshape(n, n))
         ax.set_axis_off()
         fig.colorbar(im, ax=ax)
         return fig
+
+    def preprocess(
+        self, transitions: Transitions
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Preprocess a batch of input transitions and convert it to PyTorch tensors.
+
+        The output of this function is suitable for its forward pass,
+        so a typical usage would be ``model(*model.preprocess(transitions))``.
+        """
+        state_th = torch.as_tensor(
+            transitions.obs, device=self.device, dtype=torch.long
+        )
+        action_th = torch.as_tensor(transitions.acts, device=self.device)
+        next_state_th = torch.as_tensor(
+            transitions.next_obs, device=self.device, dtype=torch.long
+        )
+        done_th = torch.as_tensor(transitions.dones, device=self.device)
+
+        del transitions  # unused
+
+        assert state_th.shape == next_state_th.shape
+        return state_th, action_th, next_state_th, done_th
+
+    def predict(
+        self,
+        state: np.ndarray,
+        action: np.ndarray,
+        next_state: np.ndarray,
+        done: np.ndarray,
+    ) -> np.ndarray:
+        """Compute rewards for a batch of transitions without gradients.
+        Also performs some preprocessing and numpy conversion.
+        """
+        state_th = torch.as_tensor(state, device=self.device, dtype=torch.long)
+        action_th = torch.as_tensor(action, device=self.device)
+        next_state_th = torch.as_tensor(
+            next_state, device=self.device, dtype=torch.long
+        )
+        done_th = torch.as_tensor(done, device=self.device)
+
+        with torch.no_grad():
+            rew_th = self(state_th, action_th, next_state_th, done_th)
+
+        rew = rew_th.detach().cpu().numpy().flatten()
+        assert rew.shape == state.shape[:1]
+        return rew
 
 
 # dict mapping environment name to potential that will be used by default
 DEFAULT_POTENTIALS = {
     "imitation/EmptyMaze-v0": "TabularPotentialShaping",
+    "imitation/EmptyMazeDense-v0": "TabularPotentialShaping",
+    "imitation/EmptyMazePath-v0": "TabularPotentialShaping",
+    "imitation/EmptyMazePathDense-v0": "TabularPotentialShaping",
+    "imitation/EmptyMazeAntiDense-v0": "TabularPotentialShaping",
     "seals/MountainCar-v0": "LinearPotentialShaping",
     "seals/HalfCheetah-v0": "LinearPotentialShaping",
 }
