@@ -6,7 +6,6 @@ set -euo pipefail
 FAST=0
 JOBS=1
 
-CONFIGS=()
 while [[ $# -gt 0 ]]; do
   key="$1"
 

@@ -20,7 +20,6 @@ use via CLI arguments.
 from .fixed_processor import add_fixed_potential, fixed_ingredient
 from .noise import add_noise_potential, noise_ingredient
 from .optimize import optimize, optimize_ingredient
-from .optimize_tabular import optimize_tabular, optimize_tabular_ex
 from .plot_heatmaps import heatmap_ingredient, plot_heatmaps
 from .plot_rewards import plot_rewards, reward_ingredient
 from .value_net_shaping import value_net_ingredient, value_net_potential
@@ -28,8 +27,6 @@ from .value_net_shaping import value_net_ingredient, value_net_potential
 __all__ = [
     "optimize_ingredient",
     "optimize",
-    "optimize_tabular_ingredient",
-    "optimize_tabular",
     "noise_ingredient",
     "add_noise_potential",
     "fixed_ingredient",

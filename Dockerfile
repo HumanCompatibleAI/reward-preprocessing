@@ -25,6 +25,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     # (e.g. for CI)
     xauth \
     xvfb \
+    # needed for training scripts
+    parallel \
     # MountainCar and other gym environments use GLX for rendering,
     # which needs this library to work
     libglu1-mesa \

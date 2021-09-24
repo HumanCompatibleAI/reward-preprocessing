@@ -348,11 +348,8 @@ class TabularPotentialShaping(PotentialShaping):
 
 # dict mapping environment name to potential that will be used by default
 DEFAULT_POTENTIALS = {
-    "imitation/EmptyMaze-v0": "TabularPotentialShaping",
-    "imitation/EmptyMazeDense-v0": "TabularPotentialShaping",
-    "imitation/EmptyMazePath-v0": "TabularPotentialShaping",
-    "imitation/EmptyMazePathDense-v0": "TabularPotentialShaping",
-    "imitation/EmptyMazeAntiDense-v0": "TabularPotentialShaping",
+    "imitation/EmptyMaze4-v0": "TabularPotentialShaping",
+    "imitation/EmptyMaze10-v0": "TabularPotentialShaping",
     "seals/MountainCar-v0": "LinearPotentialShaping",
     "seals/HalfCheetah-v0": "LinearPotentialShaping",
 }

@@ -1,3 +1,4 @@
+import os
 from typing import Any, Mapping, Sequence
 
 from imitation.data.types import Transitions
@@ -10,9 +11,11 @@ from reward_preprocessing.env import create_env, env_ingredient
 from reward_preprocessing.interp.gridworld_plot import ACTION_DELTA, Actions
 from reward_preprocessing.preprocessing.potential_shaping import instantiate_potential
 from reward_preprocessing.preprocessing.preprocessor import ScaleShift
-from reward_preprocessing.utils import get_env_name, sacred_save_fig, use_rollouts
+from reward_preprocessing.utils import get_env_name, sacred_save_fig
 
 optimize_tabular_ex = Experiment("optimize_tabular", ingredients=[env_ingredient])
+
+torch.set_num_threads(8)
 
 
 @optimize_tabular_ex.config
@@ -21,15 +24,22 @@ def config():
     steps = 10000  # number of steps to train for
     potential = None  # class name of the potential
     potential_options = {}  # kwargs for the potential (other than gamma)
-    lr = 0.01  # learning rate
+    lr = 0.001  # learning rate
     log_every = 100  # log every n batches
     lr_decay_rate = None  # factor to multiply by on each LR decay
     lr_decay_every = 100  # decay the learning rate every n batches
     objectives = ["l1", "smooth"]  # names of the objectives to optimize
+    model_path = None
+    save_path = None
 
     _ = locals()  # make flake8 happy
     del _
 
+@optimize_tabular_ex.named_config
+def fast():
+    steps = 1
+    _ = locals()  # make flake8 happy
+    del _
 
 def _local_mean_dist(x):
     dists = x[None] - x[:, None]
@@ -55,7 +65,6 @@ def optimize_tabular(
     model: RewardNet,
     device,
     gamma: float,
-    enabled: bool,
     steps: int,
     lr: float,
     lr_decay_rate: float,
@@ -67,9 +76,6 @@ def optimize_tabular(
     _run,
 ) -> Mapping[str, RewardNet]:
     models = {"unmodified": model}
-
-    if not enabled:
-        return models
 
     venv = create_env()
 
@@ -166,16 +172,17 @@ def optimize_tabular(
 
 @optimize_tabular_ex.automain
 def main(
-    model_paths: Sequence[str],
+    model_path: str,
+    save_path: str,
 ):
     if torch.cuda.is_available():
         device = torch.device("cuda")
     else:
         device = torch.device("cpu")
 
-    for path in model_paths:
-        print(f"Loading model from {path}")
-        model = torch.load(path, map_location=device)
-        preprocessed_models = optimize_tabular(model, device=device, gamma=gamma)
-        for objective, preprocessed_model in preprocessed_models.items():
-            torch.save(preprocessed_model, path + f".{objective}")
+    print(f"Loading model from {model_path}")
+    model = torch.load(model_path, map_location=device)
+    preprocessed_models = optimize_tabular(model, device=device)
+    for objective, preprocessed_model in preprocessed_models.items():
+        path = f"{save_path}.{objective}.pt"
+        torch.save(preprocessed_model, path)
