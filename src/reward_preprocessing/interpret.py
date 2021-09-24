@@ -14,8 +14,6 @@ from reward_preprocessing.interp import (
     noise_ingredient,
     optimize,
     optimize_ingredient,
-    optimize_tabular,
-    optimize_tabular_ex,
     plot_heatmaps,
     plot_rewards,
     reward_ingredient,
@@ -29,7 +27,6 @@ ex = Experiment(
     ingredients=[
         env_ingredient,
         optimize_ingredient,
-        optimize_tabular_ex,
         noise_ingredient,
         fixed_ingredient,
         reward_ingredient,
