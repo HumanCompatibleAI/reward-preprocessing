@@ -28,7 +28,6 @@ import matplotlib
 import matplotlib.colors as mcolors
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
-import mdptoolbox
 import numpy as np
 import seaborn as sns
 import torch
@@ -63,84 +62,6 @@ OFFSETS = {
 }
 # Circle at the center
 OFFSETS[(0, 0)] = np.array([0.5, 0.5])
-
-
-def _make_transitions(
-    transitions: np.ndarray,
-    low_action: int,
-    high_action: int,
-    states: np.ndarray,
-    idx: np.ndarray,
-    n: int,
-) -> None:
-    transitions[low_action, states[idx == 0], states[idx == 0]] = 1
-    transitions[low_action, states[idx > 0], states[idx < n - 1]] = 1
-    transitions[high_action, states[idx == n - 1], states[idx == n - 1]] = 1
-    transitions[high_action, states[idx < n - 1], states[idx > 0]] = 1
-
-
-def build_transitions(xlen: int, ylen: int, na: int) -> np.ndarray:
-    """Create transition matrix for deterministic gridworld."""
-    ns = xlen * ylen
-    transitions = np.zeros((na, ns, ns))
-    transitions[Actions.STAY.value, :, :] = np.eye(ns, ns)
-    states = np.arange(ns)
-    xs = states % xlen
-    ys = states // ylen
-    _make_transitions(
-        transitions, Actions.LEFT.value, Actions.RIGHT.value, states, ys, ylen
-    )
-    _make_transitions(
-        transitions, Actions.DOWN.value, Actions.UP.value, states, xs, xlen
-    )
-
-    return transitions
-
-
-def build_reward(state_action_reward: np.ndarray) -> np.ndarray:
-    """Reshape reward and fill in NaNs."""
-    xlen, ylen, na = state_action_reward.shape
-    ns = xlen * ylen
-    reward = state_action_reward.copy()
-    reward = reward.reshape(ns, na)
-
-    # We use NaN for transitions that would go outside the gridworld.
-    # But in above transition dynamics these are equivalent to stay, so rewrite.
-    mask = np.isnan(reward)
-    stay_reward = reward[:, Actions.STAY.value]
-    stay_tiled = np.tile(stay_reward, (na, 1)).T
-    reward[mask] = stay_tiled[mask]
-    assert np.isfinite(reward).all()
-
-    return reward
-
-
-def _no_op_iter(*args, **kwargs):
-    """Does nothing, workaround for bug in pymdptoolbox GH#32."""
-    del args, kwargs
-
-
-def compute_qvalues(state_action_reward: np.ndarray, discount: float) -> np.ndarray:
-    """Computes the Q-values of `state_action_reward` under deterministic dynamics."""
-    transitions = build_transitions(*state_action_reward.shape)
-    reward = build_reward(state_action_reward)
-
-    # TODO(adam): remove this workaround once GH pymdptoolbox #32 merged.
-    with mock.patch("mdptoolbox.mdp.ValueIteration._boundIter", new=_no_op_iter):
-        vi = mdptoolbox.mdp.ValueIteration(
-            transitions=transitions, reward=reward, discount=discount
-        )
-        vi.run()
-    q_values = reward + discount * (transitions * vi.V).sum(2).T
-    return q_values
-
-
-def optimal_mask(state_action_reward: np.ndarray, discount: float = 0.99) -> np.ndarray:
-    """Computes the optimal actions for each state in `state_action_reward`."""
-    q_values = compute_qvalues(state_action_reward, discount)
-    best_q = q_values.max(axis=1)[:, np.newaxis]
-    optimal_action = np.isclose(q_values, best_q)
-    return optimal_action.reshape(state_action_reward.shape)
 
 
 def _set_ticks(n: int, subaxis: matplotlib.axis.Axis) -> None:
