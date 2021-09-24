@@ -9,8 +9,8 @@ import torch
 
 
 class EmptyMazeRewardNet(RewardNet):
-    def __init__(self, **kwargs):
-        env = gym.make("imitation/EmptyMaze-v0", **kwargs)
+    def __init__(self, size: int, **kwargs):
+        env = gym.make(f"imitation/EmptyMaze{size}-v0", **kwargs)
         self.rewards = env.rewards
         super().__init__(
             observation_space=env.observation_space, action_space=env.action_space
