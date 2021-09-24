@@ -41,7 +41,7 @@ def fast():
     _ = locals()  # make flake8 happy
     del _
 
-def _local_mean_dist(x):
+def _local_mean_dist(x, **kwargs):
     dists = x[None] - x[:, None]
     means = (torch.exp(-dists.abs()) * x[None]).sum(1)
     return ((x - means) ** 2).sum()
@@ -50,13 +50,16 @@ def _local_mean_dist(x):
 def log_abs(x):
     return (1 + x.abs()).log()
 
+def smoothness(rewards: torch.Tensor, idx1, idx2):
+    # then for all such pairs, we want their rewards to be similar
+    return log_abs(rewards[idx1] - rewards[idx2]).mean()
 
 OBJECTIVES = {
-    "l1": lambda x: x.abs().mean(),
-    "l_half": lambda x: x.abs().sqrt().mean(),
+    "l1": lambda x, **kwargs: x.abs().mean(),
+    "l_half": lambda x, **kwargs: x.abs().sqrt().mean(),
     "local_mean": _local_mean_dist,
-    "log": lambda x: (1 + x.abs()).log().mean(),
-    "smooth": lambda x: log_abs(x[1:] - x[:-1]).mean(),
+    "log": lambda x, **kwargs: (1 + x.abs()).log().mean(),
+    "smooth": smoothness,
 }
 
 
@@ -110,6 +113,13 @@ def optimize_tabular(
         infos=np.array([{}] * len(states)),
     )
 
+    # find all pairs of transitions that are next to each other in the plot
+    neighbors = transitions.obs[:, None] == transitions.next_obs[None, :]
+    same_start = transitions.obs[:, None] == transitions.obs[None, :]
+    idx1, idx2 = np.logical_or(neighbors, same_start).nonzero()
+    idx1 = torch.as_tensor(idx1, device=device, dtype=torch.long)
+    idx2 = torch.as_tensor(idx2, device=device, dtype=torch.long)
+
     env.close()
 
     for objective in objectives:
@@ -147,8 +157,10 @@ def optimize_tabular(
                         transitions.acts,
                         transitions.next_obs,
                         transitions.dones,
-                    )
-                )
+                    ),
+                ),
+                idx1=idx1,
+                idx2=idx2,
             )
             loss.backward()
             optimizer.step()
