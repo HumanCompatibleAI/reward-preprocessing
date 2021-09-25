@@ -38,8 +38,10 @@ SHAPINGS = {
 
 PRETTY_OBJECTIVE_NAMES = {
     "unmodified": "Unmodified",
-    "l1": "L1 norm",
-    "smooth": "Smoothness",
+    "sparse_l1": "L1 Sparsity",
+    "smooth_l1": "L1 Smoothness",
+    "sparse_log": "Log Sparsity",
+    "smooth_log": "Log Smoothness",
 }
 
 reward_curve_ex = Experiment("reward_curves", ingredients=[env_ingredient])
@@ -47,14 +49,21 @@ reward_curve_ex = Experiment("reward_curves", ingredients=[env_ingredient])
 
 @reward_curve_ex.config
 def config():
-    objectives = ["unmodified", "l1", "smooth"]
+    objectives = ["unmodified", "sparse_l1", "smooth_l1"]
     gamma = 0.99
     base_path = "results"
     model_base_paths = []
-    font_size = 6
+    font_size = 5.5
     rollout_steps = 1000  # length of the plotted rollouts
-    rollout_steps: int
-    rollout_cfg: RolloutConfig
+    rollout_cfg = None
+
+@reward_curve_ex.named_config
+def log():
+    objectives = ["unmodified", "sparse_log", "smooth_log"]
+
+@reward_curve_ex.named_config
+def l1():
+    objectives = ["unmodified", "sparse_l1", "smooth_l1"]
 
 
 @reward_curve_ex.capture
@@ -103,7 +112,7 @@ def plot_reward_curves(
 
     for row, (model_name, model_versions) in enumerate(models.items()):
         for col, (objective, model) in enumerate(model_versions.items()):
-            ax[row, col].axhline(0, linewidth=0.15, color="black")
+            ax[row, col].axhline(0, linewidth=0.2, color="black")
             predicted_rewards = np.array([])
             for transitions_batch in dataloader:
                 with torch.no_grad():
@@ -121,7 +130,7 @@ def plot_reward_curves(
 
             ax[row, col].plot(
                 predicted_rewards,
-                linewidth=0.3,
+                linewidth=0.4
             )
 
             ax[row, col].set(
@@ -162,12 +171,12 @@ def main(
         k: v
         for k, v in sorted(
             models.items(),
-            key=lambda item: SHAPINGS[item[0].split("_")[-1]]["priority"],
+            key=lambda item: SHAPINGS[item[0].split("_")[3]]["priority"],
         )
     }
     # convert to nicer names
     models = {
-        SHAPINGS[model_path.split("_")[-1]]["pretty_name"]: v
+        SHAPINGS[model_path.split("_")[3]]["pretty_name"]: v
         for model_path, v in models.items()
     }
 
