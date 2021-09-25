@@ -60,11 +60,11 @@ def smoothness(rewards: torch.Tensor, idx1, idx2):
 
 OBJECTIVES = {
     "sparse_l1": lambda x, **kwargs: x.abs().mean(),
-    "smooth_l1": lambda *args: smoothness(*args).abs().mean(),
+    "smooth_l1": lambda x, **kwargs: smoothness(x, **kwargs).abs().mean(),
     "l_half": lambda x, **kwargs: x.abs().sqrt().mean(),
     "local_mean": _local_mean_dist,
     "sparse_log": lambda x, **kwargs: log_abs(x).mean(),
-    "smooth_log": lambda *args: log_abs(smoothness(*args)).mean(),
+    "smooth_log": lambda x, **kwargs: log_abs(smoothness(x, **kwargs)).mean(),
 }
 
 
