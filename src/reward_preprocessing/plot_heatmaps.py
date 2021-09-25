@@ -37,8 +37,10 @@ SHAPINGS = {
 
 PRETTY_OBJECTIVE_NAMES = {
     "unmodified": "Unmodified",
-    "l1": "L1 norm",
-    "smooth": "Smoothness",
+    "sparse_l1": "L1 Sparsity",
+    "smooth_l1": "L1 Smoothness",
+    "sparse_log": "Log Sparsity",
+    "smooth_log": "Log Smoothness",
 }
 
 heatmap_ex = Experiment("heatmaps", ingredients=[env_ingredient])
@@ -46,12 +48,19 @@ heatmap_ex = Experiment("heatmaps", ingredients=[env_ingredient])
 
 @heatmap_ex.config
 def config():
-    objectives = ["unmodified", "l1", "smooth"]
+    objectives = ["unmodified", "sparse_l1", "smooth_l1"]
     gamma = 0.99
     base_path = "results"
     model_base_paths = []
     font_size = 6
 
+@heatmap_ex.named_config
+def log():
+    objectives = ["unmodified", "sparse_log", "smooth_log"]
+
+@heatmap_ex.named_config
+def l1():
+    objectives = ["unmodified", "sparse_l1", "smooth_l1"]
 
 @heatmap_ex.capture
 def plot_heatmaps(

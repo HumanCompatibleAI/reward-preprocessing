@@ -28,7 +28,7 @@ def config():
     log_every = 100  # log every n batches
     lr_decay_rate = None  # factor to multiply by on each LR decay
     lr_decay_every = 100  # decay the learning rate every n batches
-    objectives = ["l1", "smooth"]  # names of the objectives to optimize
+    objectives = ["sparse_l1", "smooth_l1", "sparse_log", "smooth_log"]  # names of the objectives to optimize
     model_path = None
     save_path = None
 
@@ -55,15 +55,16 @@ def log_abs(x):
 
 def smoothness(rewards: torch.Tensor, idx1, idx2):
     # then for all such pairs, we want their rewards to be similar
-    return log_abs(rewards[idx1] - rewards[idx2]).mean()
+    return rewards[idx1] - rewards[idx2]
 
 
 OBJECTIVES = {
-    "l1": lambda x, **kwargs: x.abs().mean(),
+    "sparse_l1": lambda x, **kwargs: x.abs().mean(),
+    "smooth_l1": lambda *args: smoothness(*args).abs().mean(),
     "l_half": lambda x, **kwargs: x.abs().sqrt().mean(),
     "local_mean": _local_mean_dist,
-    "log": lambda x, **kwargs: (1 + x.abs()).log().mean(),
-    "smooth": smoothness,
+    "sparse_log": lambda x, **kwargs: log_abs(x).mean(),
+    "smooth_log": lambda *args: log_abs(smoothness(*args)).mean(),
 }
 
 

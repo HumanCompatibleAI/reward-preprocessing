@@ -19,10 +19,13 @@ torch.set_num_threads(8)
 @optimize_continuous_ex.config
 def config():
     gamma = 0.99  # discount rate
-    epochs = 1  # number of epochs to train for
+    epochs = 3  # number of epochs to train for
     potential = None  # class name of the potential
     steps = 100000
-    potential_options = {}  # kwargs for the potential (other than gamma)
+    potential_options = {
+        "num_hidden": 4,
+        "hidden_size": 128,
+    }  # kwargs for the potential (other than gamma)
     lr = 0.005  # learning rate
     log_every = 10  # log every n batches
     lr_decay_rate = None  # factor to multiply by on each LR decay
