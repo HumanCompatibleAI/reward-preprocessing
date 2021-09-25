@@ -39,6 +39,18 @@ def empty_maze_4():
 
 
 @env_ingredient.named_config
+def unshaped():
+    options = {"shaping": "unshaped"}
+    _ = locals()  # make flake8 happy
+    del _
+
+@env_ingredient.named_config
+def goal():
+    options = {"reward": "goal"}
+    _ = locals()  # make flake8 happy
+    del _
+
+@env_ingredient.named_config
 def dense():
     options = {"shaping": "dense"}
     _ = locals()  # make flake8 happy
@@ -69,7 +81,7 @@ def path():
 @env_ingredient.named_config
 def mountain_car():
     name = "seals/MountainCar-v0"
-    stats_path = "results/agents/mountain_car/vec_normalize.pkl"
+    stats_path = "old_results/agents/mountain_car/vec_normalize.pkl"
     normalize = True
     _ = locals()  # make flake8 happy
     del _

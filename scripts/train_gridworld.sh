@@ -35,21 +35,16 @@ for size in 4 10; do
     for reward in goal path; do
         if [[ $FAST == 1 ]]; then
             echo "scripts/train.sh --expert empty_maze_$size $reward fast" | tee -a ${expert_cmds}
+            echo "scripts/train.sh --airl empty_maze_$size $reward fast" | tee -a ${airl_cmds}
         else
             echo "scripts/train.sh --expert empty_maze_$size $reward" | tee -a ${expert_cmds}
+            echo "scripts/train.sh --airl empty_maze_$size $reward" | tee -a ${airl_cmds}
         fi
 
         for shaping in unshaped dense antidense random; do
             if [[ $FAST == 1 ]]; then
-                # the optimal policy is the same for each shaping
-                mkdir -p "results/expert_demos/empty_maze_${size}_${reward}_fast"
-                ln -sf "./empty_maze_${size}_${reward}_fast" "results/expert_demos/empty_maze_${size}_${reward}_${shaping}_fast"
-                echo "scripts/train.sh --airl empty_maze_$size $reward $shaping fast" | tee -a ${airl_cmds}
                 echo "scripts/train.sh --drlhp empty_maze_$size $reward $shaping fast" | tee -a ${drlhp_cmds}
             else
-                mkdir -p "results/expert_demos/empty_maze_${size}_${reward}"
-                ln -sf "./empty_maze_${size}_${reward}" "results/expert_demos/empty_maze_${size}_${reward}_${shaping}"
-                echo "scripts/train.sh --airl empty_maze_$size $reward $shaping" | tee -a ${airl_cmds}
                 echo "scripts/train.sh --drlhp empty_maze_$size $reward $shaping" | tee -a ${drlhp_cmds}
             fi
         done

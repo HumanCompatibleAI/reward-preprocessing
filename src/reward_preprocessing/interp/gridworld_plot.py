@@ -67,7 +67,12 @@ OFFSETS[(0, 0)] = np.array([0.5, 0.5])
 def _set_ticks(n: int, subaxis: matplotlib.axis.Axis) -> None:
     subaxis.set_ticks(np.arange(0, n + 1), minor=True)
     subaxis.set_ticks(np.arange(n) + 0.5)
-    subaxis.set_ticklabels(np.arange(n))
+    # subaxis.set_ticklabels(np.arange(n))
+    for tick in subaxis.get_major_ticks():
+        tick.tick1line.set_visible(False)
+        tick.tick2line.set_visible(False)
+        tick.label1.set_visible(False)
+        tick.label2.set_visible(False)
 
 
 def _axis_formatting(ax: plt.Axes, xlen: int, ylen: int) -> None:
@@ -79,7 +84,7 @@ def _axis_formatting(ax: plt.Axes, xlen: int, ylen: int) -> None:
     _set_ticks(xlen, ax.xaxis)
     _set_ticks(ylen, ax.yaxis)
     # Draw grid along minor ticks, then remove those ticks so they don't protrude
-    ax.grid(which="minor", color="k")
+    ax.grid(which="minor", color="k", linewidth=0.25)
     ax.tick_params(which="minor", length=0, width=0)
 
 
@@ -173,8 +178,8 @@ def _reward_draw(
     # optimal_actions = optimal_mask(state_action_reward, discount)
     optimal_actions = np.zeros_like(state_action_reward, dtype=bool)
 
-    circle_radius_pt = matplotlib.rcParams.get("font.size") * 0.7
-    circle_radius_in = circle_radius_pt / 72
+    circle_radius_pt = matplotlib.rcParams.get("font.size") * 0.4
+    circle_radius_in = circle_radius_pt / fig.dpi
     corner_display = ax.transData.transform([0.0, 0.0])
     circle_radius_display = fig.dpi_scale_trans.transform([circle_radius_in, 0])
     circle_radius_data = ax.transData.inverted().transform(
@@ -208,17 +213,20 @@ def _reward_draw(
         patches = circle_patches if action == 0 else triangle_patches
         if hatch:  # draw the hatch using a different color
             patches.append(
-                fn(vert, tuple(color), linewidth=1, edgecolor=hatch_color, hatch=hatch)
+                fn(vert, tuple(color), linewidth=0.15, edgecolor=hatch_color, hatch=hatch)
             )
             patches.append(
-                fn(vert, tuple(color), linewidth=1, edgecolor=edgecolor, fill=False)
+                fn(vert, tuple(color), linewidth=0.15, edgecolor=edgecolor, fill=False)
             )
         else:
-            patches.append(fn(vert, tuple(color), linewidth=1, edgecolor=edgecolor))
+            patches.append(fn(vert, tuple(color), linewidth=0.15, edgecolor=edgecolor))
 
     for p in triangle_patches + circle_patches:
         # need to draw circles on top of triangles
         ax.add_patch(p)
+    
+    # ax.set_axis_off()
+    ax.set_aspect("equal", adjustable="box")
 
 
 def plot_gridworld_rewards(
@@ -256,8 +264,8 @@ def plot_gridworld_rewards(
 
     nplots = len(reward_arrays)
     nrows = (nplots - 1) // ncols + 1
-    width, height = matplotlib.rcParams.get("figure.figsize")
-    fig = plt.figure(figsize=(width * ncols, height * nrows))
+    # width, height = matplotlib.rcParams.get("figure.figsize")
+    fig = plt.figure(figsize=(5.5, 6.5))
     width_ratios = [1] * ncols + [cbar_fraction]
     gs = fig.add_gridspec(nrows=nrows, ncols=ncols + 1, width_ratios=width_ratios)
 
