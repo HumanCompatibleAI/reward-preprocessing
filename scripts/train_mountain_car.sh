@@ -78,12 +78,12 @@ if [[ $DRLHP == 1 ]]; then
     done
 fi
 
-echo Training DRLHP and experts
-cat  ${expert_cmds} ${drlhp_cmds} | parallel -j $JOBS --progress
+echo Training expert
+parallel -j $JOBS --progress < ${expert_cmds}
 
-echo Training AIRL
+echo Training DRLHP and AIRL
 # we need the expert results first
-parallel -j $JOBS --progress < ${airl_cmds}
+cat  ${drlhp_cmds} ${airl_cmds} | parallel -j $JOBS --progress
 
 rm ${expert_cmds}
 rm ${airl_cmds}
