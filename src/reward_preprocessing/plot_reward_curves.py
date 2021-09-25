@@ -38,10 +38,10 @@ SHAPINGS = {
 
 PRETTY_OBJECTIVE_NAMES = {
     "unmodified": "Unmodified",
-    "sparse_l1": "L1 Sparsity",
+    "sparse_l1": "L1",
     "smooth_l1": "L1 Smoothness",
     "sparse_log": "Log Sparsity",
-    "smooth_log": "Log Smoothness",
+    "smooth_log": "Smoothness",
 }
 
 reward_curve_ex = Experiment("reward_curves", ingredients=[env_ingredient])
@@ -49,7 +49,7 @@ reward_curve_ex = Experiment("reward_curves", ingredients=[env_ingredient])
 
 @reward_curve_ex.config
 def config():
-    objectives = ["unmodified", "sparse_l1", "smooth_l1"]
+    objectives = ["unmodified", "sparse_l1", "smooth_log"]
     gamma = 0.99
     base_path = "results"
     model_base_paths = []

@@ -22,10 +22,7 @@ def config():
     epochs = 3  # number of epochs to train for
     potential = None  # class name of the potential
     steps = 100000
-    potential_options = {
-        "num_hidden": 4,
-        "hidden_size": 128,
-    }  # kwargs for the potential (other than gamma)
+    potential_options = {}
     lr = 0.005  # learning rate
     log_every = 10  # log every n batches
     lr_decay_rate = None  # factor to multiply by on each LR decay
@@ -38,6 +35,17 @@ def config():
     _ = locals()  # make flake8 happy
     del _
 
+@optimize_continuous_ex.named_config
+def linear():
+    potential = "LinearPotentialShaping"  # class name of the potential
+
+@optimize_continuous_ex.named_config
+def mlp():
+    potential = "MlpPotentialShaping"  # class name of the potential
+    potential_options = {
+        "num_hidden": 4,
+        "hidden_size": 128,
+    }
 
 @optimize_continuous_ex.named_config
 def fast():
