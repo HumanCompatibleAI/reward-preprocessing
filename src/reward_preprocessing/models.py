@@ -1,10 +1,9 @@
 from typing import Tuple
 
 import gym
-from imitation.envs import maze  # noqa: F401
+from imitation.envs import maze, mountain_car  # noqa: F401
 from imitation.rewards.reward_nets import RewardNet
 import numpy as np
-import seals  # noqa: F401
 import torch
 
 
@@ -49,9 +48,12 @@ class EmptyMazeRewardNet(RewardNet):
         return state_th, action_th, next_state_th, done_th
 
 class MountainCarRewardNet(RewardNet):
-    def __init__(self):
-        env = gym.make(f"seals/MountainCar-v0")
-        super().__init__(env.observation_space, env.action_space)
+    def __init__(self, **kwargs):
+        self.env = gym.make(f"imitation/MountainCar-v0", **kwargs)
+        super().__init__(self.env.observation_space, self.env.action_space)
 
     def forward(self, state: torch.Tensor, action: torch.Tensor, next_state: torch.Tensor, done: torch.Tensor) -> torch.Tensor:
-        return (state[:, 0] > 0.5).float() - 1.0
+        reward = (state[:, 0] > 0.5).float() - 1.0
+        shaping = torch.tensor([self.env._shaping(x, y) for x, y in zip(state, next_state)])
+        return reward + shaping
+
