@@ -39,13 +39,13 @@ while [[ $# -gt 0 ]]; do
 done
 
 
-mkdir -p fig
+mkdir -p fig/gridworld
 
 if [[ $DRLHP == 1 ]]; then
   for size in $sizes; do
     for reward in goal path; do
       for mode in l1 log; do
-        MODEL_PATHS=$(find processed/preference_comparisons -type f -path "*/empty_maze_${size}_$reward*.pt" -printf "%P\n" | sed 's/\.[a-z0-9]*\.pt$//' | sort | uniq)
+        MODEL_PATHS=$(find processed/preference_comparisons -type f -path "*/empty_maze_${size}_$reward*.pt" -printf "%P\n" | sed 's/\.[a-z0-9_]*\.pt$//' | sort | uniq)
         path_list=$(echo $MODEL_PATHS | sed 's/\(\S*\)/"\1",/g')
         path_list="[$path_list]"
         echo $path_list
@@ -55,7 +55,7 @@ if [[ $DRLHP == 1 ]]; then
           base_path=processed/preference_comparisons \
           "model_base_paths=$path_list" \
           $mode \
-          save_path=fig/preference_comparisons_${size}_${reward}_${mode}.pdf
+          save_path=fig/gridworld/preference_comparisons_${size}_${reward}_${mode}.pdf
       done
     done
   done
@@ -65,7 +65,7 @@ if [[ $AIRL == 1 ]]; then
   for size in $sizes; do
     for reward in goal path; do
       for mode in l1 log; do
-        MODEL_PATHS=$(find processed/adversarial -type f -path "*/empty_maze_${size}_$reward*.pt" -printf "%P\n" | sed 's/\.[a-z0-9]*\.pt$//' | sort | uniq)
+        MODEL_PATHS=$(find processed/adversarial -type f -path "*/empty_maze_${size}_$reward*.pt" -printf "%P\n" | sed 's/\.[a-z0-9_]*\.pt$//' | sort | uniq)
         path_list=$(echo $MODEL_PATHS | sed 's/\(\S*\)/"\1",/g')
         path_list="[$path_list]"
         echo $path_list
@@ -75,7 +75,7 @@ if [[ $AIRL == 1 ]]; then
           base_path=processed/adversarial \
           "model_base_paths=$path_list" \
           $mode \
-          save_path=fig/adversarial_${size}_${reward}_${mode}.pdf
+          save_path=fig/gridworld/adversarial_${size}_${reward}_${mode}.pdf
       done
     done
   done
@@ -85,7 +85,7 @@ if [[ $TRUTH == 1 ]]; then
   for size in $sizes; do
     for reward in goal path; do
       for mode in l1 log; do
-        MODEL_PATHS=$(find processed/ground_truth -type f -path "*/empty_maze_${size}_$reward*.pt" -printf "%P\n" | sed 's/\.[a-z0-9]*\.pt$//' | sort | uniq)
+        MODEL_PATHS=$(find processed/ground_truth -type f -path "*/empty_maze_${size}_$reward*.pt" -printf "%P\n" | sed 's/\.[a-z0-9_]*\.pt$//' | sort | uniq)
         path_list=$(echo $MODEL_PATHS | sed 's/\(\S*\)/"\1",/g')
         path_list="[$path_list]"
         echo $path_list
@@ -95,7 +95,7 @@ if [[ $TRUTH == 1 ]]; then
           base_path=processed/ground_truth \
           "model_base_paths=$path_list" \
           $mode \
-          save_path=fig/ground_truth_${size}_${reward}_${mode}.pdf
+          save_path=fig/gridworld/ground_truth_${size}_${reward}_${mode}.pdf
       done
     done
   done

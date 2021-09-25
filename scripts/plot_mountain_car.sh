@@ -32,7 +32,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-ROLLOUT_PATH="results/expert_demos/shaped_mountain_car/rollouts/final.pkl"
+ROLLOUT_PATH="results/expert_demos/seals_mountain_car/rollouts/final.pkl"
 ROLLOUT="(0, None, \"expert\", \"$ROLLOUT_PATH\")"
 
 mkdir -p fig/mountain_car
