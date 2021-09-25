@@ -8,6 +8,7 @@ JOBS=1
 DRLHP=0
 AIRL=0
 EXPERT=0
+QUALITY="medium"
 
 while [[ $# -gt 0 ]]; do
   key="$1"
@@ -38,6 +39,11 @@ while [[ $# -gt 0 ]]; do
       DRLHP=1
       EXPERT=1
       AIRL=1
+      shift
+      ;;
+    --quality)
+      QUALITY=$2
+      shift
       shift
       ;;
   esac
@@ -71,9 +77,9 @@ fi
 if [[ $DRLHP == 1 ]]; then
     for shaping in unshaped dense antidense random; do
         if [[ $FAST == 1 ]]; then
-            echo "scripts/train.sh --drlhp shaped_mountain_car $shaping fast" | tee -a ${drlhp_cmds}
+            echo "scripts/train.sh --drlhp shaped_mountain_car $shaping $QUALITY fast" | tee -a ${drlhp_cmds}
         else
-            echo "scripts/train.sh --drlhp shaped_mountain_car $shaping" | tee -a ${drlhp_cmds}
+            echo "scripts/train.sh --drlhp shaped_mountain_car $shaping $QUALITY" | tee -a ${drlhp_cmds}
         fi
     done
 fi
