@@ -53,7 +53,7 @@ if [[ $DRLHP == 1 ]]; then
   mkdir -p processed/preference_comparisons
   MODEL_PATHS=$(find results/preference_comparisons -type f -path "*/shaped_mountain_car*/final_reward_net.pt" -printf "%P\n" | sed 's/\/final_reward_net\.pt$//')
   for path in $MODEL_PATHS; do
-    if [[ path == *random ]]; then
+    if [[ $path == *random ]]; then
       potential=mlp
     else
       potential=linear
@@ -67,7 +67,7 @@ if [[ $AIRL == 1 ]]; then
   mkdir -p processed/adversarial
   MODEL_PATHS=$(find results/adversarial -type f -path "*/shaped_mountain_car*/checkpoints/final/reward_test.pt" -printf "%P\n" | sed 's/\/checkpoints\/final\/reward_test\.pt$//')
   for path in $MODEL_PATHS; do
-    if [[ path == *random ]]; then
+    if [[ $path == *random ]]; then
       potential=mlp
     else
       potential=linear
@@ -81,7 +81,7 @@ if [[ $TRUTH == 1 ]]; then
   mkdir -p processed/ground_truth
   MODEL_PATHS=$(find results/ground_truth_models -type f -path "*/shaped_mountain_car*.pt" -printf "%P\n" | sed 's/\.pt$//')
   for path in $MODEL_PATHS; do
-    if [[ path == *random ]]; then
+    if [[ $path == *random ]]; then
       potential=mlp
     else
       potential=linear

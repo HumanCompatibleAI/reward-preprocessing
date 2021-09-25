@@ -226,10 +226,10 @@ class PytorchPotentialShaping(PotentialShaping):
 class LinearPotentialShaping(PytorchPotentialShaping):
     """A potential shaping preprocessor with a learned linear potential."""
 
-    def __init__(self, model: RewardNet, gamma: float):
+    def __init__(self, model: RewardNet, gamma: float, freeze_model: bool = True):
         in_size = np.product(model.observation_space.shape)
         potential = nn.Sequential(nn.Flatten(), nn.Linear(in_size, 1))
-        super().__init__(model, potential, gamma)
+        super().__init__(model, potential, gamma, freeze_model=freeze_model)
 
 
 class MlpPotentialShaping(PytorchPotentialShaping):
