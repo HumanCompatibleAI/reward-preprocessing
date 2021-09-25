@@ -26,7 +26,7 @@ def config():
     log_every = 100  # log every n batches
     lr_decay_rate = None  # factor to multiply by on each LR decay
     lr_decay_every = 100  # decay the learning rate every n batches
-    objectives = ["l1", "smooth"]  # names of the objectives to optimize
+    objectives = ["sparse_l1", "smooth_l1", "sparse_log", "smooth_log"]  # names of the objectives to optimize
     batch_size = 256  # batch size for the dataloader
     model_path = None
     save_path = None
@@ -55,11 +55,12 @@ def log_abs(x):
 
 
 OBJECTIVES = {
-    "l1": lambda x: x.abs().mean(),
+    "sparse_l1": lambda x: x.abs().mean(),
+    "smooth_l1": lambda x: (x[1:] - x[:-1]).abs().mean(),
     "l_half": lambda x: x.abs().sqrt().mean(),
     "local_mean": _local_mean_dist,
-    "log": lambda x: (1 + x.abs()).log().mean(),
-    "smooth": lambda x: log_abs(x[1:] - x[:-1]).mean(),
+    "sparse_log": lambda x: (1 + x.abs()).log().mean(),
+    "smooth_log": lambda x: log_abs(x[1:] - x[:-1]).mean(),
 }
 
 

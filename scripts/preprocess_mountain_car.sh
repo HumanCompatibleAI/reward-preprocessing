@@ -46,7 +46,7 @@ done
 cmds=$(mktemp)
 trap "rm -f $cmds" 0 2 3 15
 
-ROLLOUT_PATH="results/expert_demos/shaped_mountain_car/rollouts/final.pkl"
+ROLLOUT_PATH="results/expert_demos/seals_mountain_car/rollouts/final.pkl"
 ROLLOUTS="[(0, None, \"expert\", \"$ROLLOUT_PATH\")]"
 
 if [[ $DRLHP == 1 ]]; then
