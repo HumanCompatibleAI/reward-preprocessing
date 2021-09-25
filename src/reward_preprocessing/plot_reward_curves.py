@@ -39,10 +39,11 @@ SHAPINGS = {
 PRETTY_OBJECTIVE_NAMES = {
     "unmodified": "Unmodified",
     "l1": "L1 norm",
-    "smooth": "Smoothness"
+    "smooth": "Smoothness",
 }
 
 reward_curve_ex = Experiment("reward_curves", ingredients=[env_ingredient])
+
 
 @reward_curve_ex.config
 def config():
@@ -54,6 +55,7 @@ def config():
     rollout_steps = 1000  # length of the plotted rollouts
     rollout_steps: int
     rollout_cfg: RolloutConfig
+
 
 @reward_curve_ex.capture
 def plot_reward_curves(
@@ -67,7 +69,7 @@ def plot_reward_curves(
 ) -> plt.Figure:
     rollout_cfg = RolloutConfig(*rollout_cfg)
 
-    plt.rcParams.update({'font.size': font_size})
+    plt.rcParams.update({"font.size": font_size})
 
     venv = create_env()
     # TODO: this is very brittle
@@ -95,7 +97,9 @@ def plot_reward_curves(
 
     n_cols = len(objectives)
     n_rows = len(models)
-    fig, ax = plt.subplots(n_rows, n_cols, figsize=(5.5, 6.5), squeeze=False)
+    fig, ax = plt.subplots(
+        n_rows, n_cols, figsize=(5.5, 6.5), squeeze=False, sharex=True, sharey=True
+    )
 
     for row, (model_name, model_versions) in enumerate(models.items()):
         for col, (objective, model) in enumerate(model_versions.items()):
@@ -120,9 +124,14 @@ def plot_reward_curves(
                 linewidth=0.3,
             )
 
-            ax[row, col].set_xlabel("Time step")
-            ax[row, col].set_ylabel("Reward")
-            ax[row, col].set(title=f"{model_name} / {PRETTY_OBJECTIVE_NAMES[objective]}")
+            ax[row, col].set(
+                title=f"{model_name} / {PRETTY_OBJECTIVE_NAMES[objective]}"
+            )
+
+    for row in range(n_rows):
+        ax[row, 0].set_ylabel("Reward")
+    for col in range(n_cols):
+        ax[n_rows - 1, col].set_xlabel("Time step")
 
     venv.close()
     return fig
@@ -147,17 +156,21 @@ def main(
             path = Path(base_path) / (model_path + f".{objective}.pt")
             print(f"Loading model from {path}")
             models[model_path][objective] = torch.load(path, map_location=device)
-    
+
     # sort in the order we want for the plot
     models = {
-        k: v for k, v in sorted(models.items(), key=lambda item: SHAPINGS[item[0].split("_")[-1]]["priority"])
+        k: v
+        for k, v in sorted(
+            models.items(),
+            key=lambda item: SHAPINGS[item[0].split("_")[-1]]["priority"],
+        )
     }
     # convert to nicer names
     models = {
         SHAPINGS[model_path.split("_")[-1]]["pretty_name"]: v
         for model_path, v in models.items()
     }
-    
+
     fig = plot_reward_curves(models)
     fig.set_tight_layout(True)
     fig.savefig(save_path)

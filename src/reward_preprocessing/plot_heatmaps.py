@@ -38,10 +38,11 @@ SHAPINGS = {
 PRETTY_OBJECTIVE_NAMES = {
     "unmodified": "Unmodified",
     "l1": "L1 norm",
-    "smooth": "Smoothness"
+    "smooth": "Smoothness",
 }
 
 heatmap_ex = Experiment("heatmaps", ingredients=[env_ingredient])
+
 
 @heatmap_ex.config
 def config():
@@ -51,15 +52,16 @@ def config():
     model_base_paths = []
     font_size = 6
 
+
 @heatmap_ex.capture
 def plot_heatmaps(
     models: Mapping[str, Mapping[str, RewardNet]],
     gamma: float,
     objectives: Sequence[str],
-    font_size: int
+    font_size: int,
 ) -> plt.Figure:
 
-    plt.rcParams.update({'font.size': font_size})
+    plt.rcParams.update({"font.size": font_size})
 
     venv = create_env()
     # TODO: this is very brittle
@@ -121,7 +123,9 @@ def plot_heatmaps(
         for objective, reward in reward_versions.items()
     }
     venv.close()
-    return plot_gridworld_rewards(rewards, ncols=ncols, discount=gamma, vmin=-1.2, vmax=1.2)
+    return plot_gridworld_rewards(
+        rewards, ncols=ncols, discount=gamma, vmin=-1.2, vmax=1.2
+    )
 
 
 @heatmap_ex.automain
@@ -143,17 +147,21 @@ def main(
             path = Path(base_path) / (model_path + f".{objective}.pt")
             print(f"Loading model from {path}")
             models[model_path][objective] = torch.load(path, map_location=device)
-    
+
     # sort in the order we want for the plot
     models = {
-        k: v for k, v in sorted(models.items(), key=lambda item: SHAPINGS[item[0].split("_")[-1]]["priority"])
+        k: v
+        for k, v in sorted(
+            models.items(),
+            key=lambda item: SHAPINGS[item[0].split("_")[-1]]["priority"],
+        )
     }
     # convert to nicer names
     models = {
         SHAPINGS[model_path.split("_")[-1]]["pretty_name"]: v
         for model_path, v in models.items()
     }
-    
+
     fig = plot_heatmaps(models)
     fig.set_tight_layout(True)
     fig.savefig(save_path)

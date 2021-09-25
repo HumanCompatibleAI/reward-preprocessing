@@ -35,11 +35,13 @@ def config():
     _ = locals()  # make flake8 happy
     del _
 
+
 @optimize_tabular_ex.named_config
 def fast():
     steps = 1
     _ = locals()  # make flake8 happy
     del _
+
 
 def _local_mean_dist(x, **kwargs):
     dists = x[None] - x[:, None]
@@ -50,9 +52,11 @@ def _local_mean_dist(x, **kwargs):
 def log_abs(x):
     return (1 + x.abs()).log()
 
+
 def smoothness(rewards: torch.Tensor, idx1, idx2):
     # then for all such pairs, we want their rewards to be similar
     return log_abs(rewards[idx1] - rewards[idx2]).mean()
+
 
 OBJECTIVES = {
     "l1": lambda x, **kwargs: x.abs().mean(),

@@ -350,6 +350,7 @@ class TabularPotentialShaping(PotentialShaping):
 DEFAULT_POTENTIALS = {
     "imitation/EmptyMaze4-v0": "TabularPotentialShaping",
     "imitation/EmptyMaze10-v0": "TabularPotentialShaping",
+    "imitation/MountainCar-v0": "MlpPotentialShaping",
     "seals/MountainCar-v0": "LinearPotentialShaping",
     "seals/HalfCheetah-v0": "LinearPotentialShaping",
 }

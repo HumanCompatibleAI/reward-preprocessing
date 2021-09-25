@@ -213,7 +213,13 @@ def _reward_draw(
         patches = circle_patches if action == 0 else triangle_patches
         if hatch:  # draw the hatch using a different color
             patches.append(
-                fn(vert, tuple(color), linewidth=0.15, edgecolor=hatch_color, hatch=hatch)
+                fn(
+                    vert,
+                    tuple(color),
+                    linewidth=0.15,
+                    edgecolor=hatch_color,
+                    hatch=hatch,
+                )
             )
             patches.append(
                 fn(vert, tuple(color), linewidth=0.15, edgecolor=edgecolor, fill=False)
@@ -224,7 +230,7 @@ def _reward_draw(
     for p in triangle_patches + circle_patches:
         # need to draw circles on top of triangles
         ax.add_patch(p)
-    
+
     # ax.set_axis_off()
     ax.set_aspect("equal", adjustable="box")
 

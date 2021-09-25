@@ -1,7 +1,7 @@
 from typing import Any, Iterable, Mapping, Optional
 
 import gym
-from imitation.envs import maze, sparse  # noqa: F401
+from imitation.envs import maze, mountain_car, sparse  # noqa: F401
 from sacred import Ingredient
 import seals  # noqa: F401
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
@@ -44,11 +44,13 @@ def unshaped():
     _ = locals()  # make flake8 happy
     del _
 
+
 @env_ingredient.named_config
 def goal():
     options = {"reward": "goal"}
     _ = locals()  # make flake8 happy
     del _
+
 
 @env_ingredient.named_config
 def dense():
@@ -82,6 +84,17 @@ def path():
 def mountain_car():
     name = "seals/MountainCar-v0"
     stats_path = "old_results/agents/mountain_car/vec_normalize.pkl"
+    normalize = True
+    _ = locals()  # make flake8 happy
+    del _
+
+
+@env_ingredient.named_config
+def shaped_mountain_car():
+    name = "imitation/MountainCar-v0"
+    stats_path = (
+        "results/expert_demos/shaped_mountain_car/policies/final/vec_normalize.pkl"
+    )
     normalize = True
     _ = locals()  # make flake8 happy
     del _

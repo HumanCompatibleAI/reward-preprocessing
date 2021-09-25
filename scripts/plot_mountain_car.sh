@@ -32,6 +32,9 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+ROLLOUT_PATH="results/expert_demos/shaped_mountain_car/rollouts/final.pkl"
+ROLLOUT="(0, None, \"expert\", \"$ROLLOUT_PATH\")"
+
 mkdir -p fig/mountain_car
 
 if [[ $DRLHP == 1 ]]; then
@@ -43,7 +46,7 @@ if [[ $AIRL == 1 ]]; then
 fi
 
 if [[ $TRUTH == 1 ]]; then
-  MODEL_PATHS=$(find processed/ground_truth -type f -path "*/mountain_car_*.pt" -printf "%P\n" | sed 's/\.[a-z0-9]*\.pt$//' | sort | uniq)
+  MODEL_PATHS=$(find processed/ground_truth -type f -path "*/shaped_mountain_car_*.pt" -printf "%P\n" | sed 's/\.[a-z0-9]*\.pt$//' | sort | uniq)
   path_list=$(echo $MODEL_PATHS | sed 's/\(\S*\)/"\1",/g')
   path_list="[$path_list]"
   echo $path_list
@@ -51,7 +54,7 @@ if [[ $TRUTH == 1 ]]; then
     env.mountain_car \
     base_path=processed/ground_truth \
     "model_base_paths=$path_list" \
-    'objectives=["unmodified"]' \
     save_path=fig/mountain_car/ground_truth.pdf \
     'rollout_cfg=(1, )'
+    # "rollout_cfg=$ROLLOUT"
 fi

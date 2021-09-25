@@ -54,17 +54,17 @@ echo Commands that will be run:
 
 if [[ $FAST == 1 ]]; then
     if [[ $EXPERT == 1 ]]; then
-        echo "scripts/train.sh --expert shaped_mountain_car fast" | tee -a ${expert_cmds}
+        echo "scripts/train.sh --expert seals_mountain_car fast" | tee -a ${expert_cmds}
     fi
     if [[ $AIRL == 1 ]]; then
-        echo "scripts/train.sh --airl shaped_mountain_car fast" | tee -a ${airl_cmds}
+        echo "scripts/train.sh --airl seals_mountain_car fast" | tee -a ${airl_cmds}
     fi
 else
     if [[ $EXPERT == 1 ]]; then
-        echo "scripts/train.sh --expert shaped_mountain_car" | tee -a ${expert_cmds}
+        echo "scripts/train.sh --expert seals_mountain_car" | tee -a ${expert_cmds}
     fi
     if [[ $AIRL == 1 ]]; then
-        echo "scripts/train.sh --airl shaped_mountain_car" | tee -a ${airl_cmds}
+        echo "scripts/train.sh --airl seals_mountain_car" | tee -a ${airl_cmds}
     fi
 fi
 

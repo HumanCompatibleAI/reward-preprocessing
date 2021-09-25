@@ -43,6 +43,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+
 cmds=$(mktemp)
 trap "rm -f $cmds" 0 2 3 15
 

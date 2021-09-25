@@ -41,19 +41,29 @@ class EmptyMazeRewardNet(RewardNet):
         """
         state_th = torch.as_tensor(state, device=self.device, dtype=torch.long)
         action_th = torch.as_tensor(action, device=self.device)
-        next_state_th = torch.as_tensor(next_state, device=self.device, dtype=torch.long)
+        next_state_th = torch.as_tensor(
+            next_state, device=self.device, dtype=torch.long
+        )
         done_th = torch.as_tensor(done, device=self.device)
 
         assert state_th.shape == next_state_th.shape
         return state_th, action_th, next_state_th, done_th
 
+
 class MountainCarRewardNet(RewardNet):
     def __init__(self, **kwargs):
-        self.env = gym.make(f"imitation/MountainCar-v0", **kwargs)
+        self.env = gym.make(f"imitation/MountainCar-v0", **kwargs).unwrapped
         super().__init__(self.env.observation_space, self.env.action_space)
 
-    def forward(self, state: torch.Tensor, action: torch.Tensor, next_state: torch.Tensor, done: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self,
+        state: torch.Tensor,
+        action: torch.Tensor,
+        next_state: torch.Tensor,
+        done: torch.Tensor,
+    ) -> torch.Tensor:
         reward = (state[:, 0] > 0.5).float() - 1.0
-        shaping = torch.tensor([self.env._shaping(x, y) for x, y in zip(state, next_state)])
+        shaping = torch.tensor(
+            [self.env._shaping(x, y) for x, y in zip(state, next_state)]
+        )
         return reward + shaping
-
