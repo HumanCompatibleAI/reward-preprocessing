@@ -21,9 +21,10 @@ def config():
     gamma = 0.99  # discount rate
     epochs = 1  # number of epochs to train for
     potential = None  # class name of the potential
+    steps = 100000
     potential_options = {}  # kwargs for the potential (other than gamma)
     lr = 0.005  # learning rate
-    log_every = 100  # log every n batches
+    log_every = 10  # log every n batches
     lr_decay_rate = None  # factor to multiply by on each LR decay
     lr_decay_every = 100  # decay the learning rate every n batches
     objectives = ["sparse_l1", "smooth_l1", "sparse_log", "smooth_log"]  # names of the objectives to optimize
