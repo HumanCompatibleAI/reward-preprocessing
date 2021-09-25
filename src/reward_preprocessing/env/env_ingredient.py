@@ -93,7 +93,7 @@ def mountain_car():
 def shaped_mountain_car():
     name = "imitation/MountainCar-v0"
     stats_path = (
-        "results/expert_demos/shaped_mountain_car/policies/final/vec_normalize.pkl"
+        "results/expert_demos/seals_mountain_car/policies/final/vec_normalize.pkl"
     )
     normalize = True
     _ = locals()  # make flake8 happy
