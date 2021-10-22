@@ -127,6 +127,8 @@ def plot_reward_curves(
                     predicted_rewards = np.concatenate(
                         [predicted_rewards, predicted_rewards_batch.cpu().numpy()]
                     )
+            if objective in {"smooth_log", "smooth_l1"}:
+                predicted_rewards -= predicted_rewards[0]
 
             ax[row, col].plot(
                 predicted_rewards,
