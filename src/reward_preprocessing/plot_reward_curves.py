@@ -23,11 +23,11 @@ SHAPINGS = {
         "priority": 0,
     },
     "dense": {
-        "pretty_name": "Dense shaping",
+        "pretty_name": "Linear shaping",
         "priority": 1,
     },
     "antidense": {
-        "pretty_name": "Negative shaping",
+        "pretty_name": "Neg. linear shaping",
         "priority": 2,
     },
     "random": {
@@ -38,10 +38,10 @@ SHAPINGS = {
 
 PRETTY_OBJECTIVE_NAMES = {
     "unmodified": "Unmodified",
-    "sparse_l1": "L1",
-    "smooth_l1": "L1 Smoothness",
-    "sparse_log": "Log Sparsity",
-    "smooth_log": "Smoothness",
+    "sparse_l1": "L1 sparse",
+    "smooth_l1": "L1 smooth",
+    "sparse_log": "Log sparse",
+    "smooth_log": "Log smooth",
 }
 
 reward_curve_ex = Experiment("reward_curves", ingredients=[env_ingredient])

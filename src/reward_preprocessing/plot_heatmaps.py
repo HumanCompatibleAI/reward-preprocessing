@@ -37,10 +37,10 @@ SHAPINGS = {
 
 PRETTY_OBJECTIVE_NAMES = {
     "unmodified": "Unmodified",
-    "sparse_l1": "L1",
-    "smooth_l1": "L1 Smoothness",
-    "sparse_log": "Log Sparsity",
-    "smooth_log": "Smoothness",
+    "sparse_l1": "L1 sparse",
+    "smooth_l1": "L1 smooth",
+    "sparse_log": "Log sparse",
+    "smooth_log": "Log smooth",
 }
 
 heatmap_ex = Experiment("heatmaps", ingredients=[env_ingredient])
