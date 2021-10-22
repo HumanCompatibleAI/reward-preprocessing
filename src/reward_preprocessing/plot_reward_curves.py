@@ -113,6 +113,8 @@ def plot_reward_curves(
     for row, (model_name, model_versions) in enumerate(models.items()):
         for col, (objective, model) in enumerate(model_versions.items()):
             ax[row, col].axhline(0, linewidth=0.2, color="black")
+            for x in [200, 400, 600, 800]:
+                ax[row, col].axvline(x, linewidth=0.2, color="gray")
             predicted_rewards = np.array([])
             for transitions_batch in dataloader:
                 with torch.no_grad():
@@ -134,6 +136,8 @@ def plot_reward_curves(
                 predicted_rewards,
                 linewidth=0.4
             )
+            ax[row, col].set_ylim(top=8, bottom=-6)
+            ax[row, col].set_xlim(left=0, right=1000)
 
             ax[row, col].set(
                 title=f"{model_name} / {PRETTY_OBJECTIVE_NAMES[objective]}"
