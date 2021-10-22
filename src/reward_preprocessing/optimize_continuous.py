@@ -23,7 +23,7 @@ def config():
     potential = None  # class name of the potential
     steps = 100000
     potential_options = {}
-    lr = 0.1  # learning rate
+    lr = 0.01  # learning rate
     log_every = 10  # log every n batches
     lr_decay_rate = None  # factor to multiply by on each LR decay
     lr_decay_every = 100  # decay the learning rate every n batches
