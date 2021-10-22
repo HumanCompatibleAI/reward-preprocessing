@@ -117,6 +117,8 @@ def plot_heatmaps(
             np_out = out.detach().cpu().numpy()
             np_out[invalid_indices] = np.nan
             np_out = np_out.reshape(env.size, env.size, 5)
+            if not objective in {"sparse_l1", "sparse_log"}:
+                np_out -= np_out[np.isfinite(np_out)].mean()
             rewards[model_name][objective] = np_out
 
     # reward_array = env.rewards
