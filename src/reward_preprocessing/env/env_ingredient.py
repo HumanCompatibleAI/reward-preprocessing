@@ -1,11 +1,13 @@
 from typing import Any, Iterable, Mapping, Optional
 
 import gym
-from imitation.envs import maze, mountain_car, sparse  # noqa: F401
 from sacred import Ingredient
 import seals  # noqa: F401
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
+# avoid name clash, we don't use this directly anyway
+from reward_preprocessing.env import maze  # noqa: F401
+from reward_preprocessing.env import mountain_car as mountain_car_  # noqa: F401
 from reward_preprocessing.utils import instantiate
 
 env_ingredient = Ingredient("env")
@@ -26,14 +28,21 @@ def config():
 
 @env_ingredient.named_config
 def empty_maze_10():
-    name = "imitation/EmptyMaze10-v0"
+    name = "reward_preprocessing/EmptyMaze10-v0"
     _ = locals()  # make flake8 happy
     del _
 
 
 @env_ingredient.named_config
 def empty_maze_4():
-    name = "imitation/EmptyMaze4-v0"
+    name = "reward_preprocessing/EmptyMaze4-v0"
+    _ = locals()  # make flake8 happy
+    del _
+
+
+@env_ingredient.named_config
+def key_maze_6():
+    name = "reward_preprocessing/KeyMaze6-v0"
     _ = locals()  # make flake8 happy
     del _
 

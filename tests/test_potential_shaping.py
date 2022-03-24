@@ -30,10 +30,25 @@ def test_dummy_potential():
     action = np.random.randn(1, 5, 5)
     next_state = np.random.randn(1, 5, 5)
     done = np.array([False])
-    transition = Transitions(state, action, None, next_state, done)
+    infos = np.array([{}])
+    transition = Transitions(state, action, infos, next_state, done)
 
-    original = model(*model.preprocess(transition))
-    shaped = shaping(*model.preprocess(transition))
+    original = model(
+        *model.preprocess(
+            transition.obs,
+            transition.acts,
+            transition.next_obs,
+            transition.dones,
+        )
+    )
+    shaped = shaping(
+        *model.preprocess(
+            transition.obs,
+            transition.acts,
+            transition.next_obs,
+            transition.dones,
+        )
+    )
 
     assert shaped == original + gamma * potential(
         torch.as_tensor(next_state, dtype=torch.float32)
@@ -41,9 +56,23 @@ def test_dummy_potential():
 
     # now check that the terminal state has potential 0
     done = np.array([True])
-    transition = Transitions(state, action, None, next_state, done)
+    transition = Transitions(state, action, infos, next_state, done)
 
-    original = model(*model.preprocess(transition))
-    shaped = shaping(*model.preprocess(transition))
+    original = model(
+        *model.preprocess(
+            transition.obs,
+            transition.acts,
+            transition.next_obs,
+            transition.dones,
+        )
+    )
+    shaped = shaping(
+        *model.preprocess(
+            transition.obs,
+            transition.acts,
+            transition.next_obs,
+            transition.dones,
+        )
+    )
 
     assert shaped == original - potential(torch.as_tensor(state, dtype=torch.float32))

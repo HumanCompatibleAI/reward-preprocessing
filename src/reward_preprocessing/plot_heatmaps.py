@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from typing import Mapping, Sequence
 
@@ -9,11 +10,7 @@ from sacred import Experiment
 import torch
 
 from reward_preprocessing.env.env_ingredient import create_env, env_ingredient
-from reward_preprocessing.interp.gridworld_plot import (
-    ACTION_DELTA,
-    Actions,
-    plot_gridworld_rewards,
-)
+from reward_preprocessing.gridworld_plot import plot_gridworld_rewards
 
 # Lowest priority is plotted first (in the top row)
 SHAPINGS = {
@@ -53,14 +50,20 @@ def config():
     base_path = "results"
     model_base_paths = []
     font_size = 6
+    locals()  # make flake8 happy
+
 
 @heatmap_ex.named_config
 def log():
     objectives = ["unmodified", "sparse_log", "smooth_log"]
+    locals()  # make flake8 happy
+
 
 @heatmap_ex.named_config
 def l1():
     objectives = ["unmodified", "sparse_l1", "smooth_l1"]
+    locals()  # make flake8 happy
+
 
 @heatmap_ex.capture
 def plot_heatmaps(
@@ -87,21 +90,12 @@ def plot_heatmaps(
     invalid_indices = []
     for state in range(env.observation_space.n):
         for action in range(env.action_space.n):
-            delta = ACTION_DELTA[Actions(action)]
-            x, y = divmod(state, env.size)
-            next_x = x + delta[0]
-            next_y = y + delta[1]
-            if env._is_valid((next_x, next_y)):
-                next_state = env.size * next_x + next_y
-            else:
-                next_state = state
+            next_state, valid = env._step(state, action)
+            if not valid:
                 invalid_indices.append(5 * state + action)
             states.append(state)
             next_states.append(next_state)
             actions.append(action)
-    # positions = torch.arange(space.n, device=model.device)
-    # states = positions.unsqueeze(1).repeat(1, space.n).flatten()
-    # next_states = positions.unsqueeze(0).repeat(space.n, 1).flatten()
     invalid_indices = np.array(invalid_indices)
 
     states = torch.tensor(states, dtype=torch.long)
@@ -116,20 +110,35 @@ def plot_heatmaps(
 
             np_out = out.detach().cpu().numpy()
             np_out[invalid_indices] = np.nan
-            np_out = np_out.reshape(env.size, env.size, 5)
-            if not objective in {"sparse_l1", "sparse_log"}:
+            np_out = np_out.reshape(env.observation_space.n, 5)
+            if objective not in {"sparse_l1", "sparse_log"}:
                 np_out -= np_out[np.isfinite(np_out)].mean()
             rewards[model_name][objective] = np_out
 
-    # reward_array = env.rewards
-    # rewards["ground_truth"] = {
-    #     "unmodified": prepare_rewards(torch.as_tensor(reward_array))
-    # }
+    if env.using_key:
+        assert (
+            len(rewards) == 1
+        ), "Plotting multiple models not supported when using key"
+        # We want to split the rewards for each objective into two arrays,
+        # one with and one without the key. These can then be plotted separately.
+        stacked_rewards = next(iter(rewards.values()))
+        rewards = {
+            "without key": {
+                objective: stacked_rewards[objective][: env.size ** 2, :]
+                for objective in objectives
+            },
+            "with key": {
+                objective: stacked_rewards[objective][env.size ** 2 :, :]
+                for objective in objectives
+            },
+        }
 
     ncols = len(objectives)
-    # flatten the reward dict
+    # flatten the reward dict and reshape for plotting
     rewards = {
-        f"{name} / {PRETTY_OBJECTIVE_NAMES[objective]}": reward
+        f"{name} / {PRETTY_OBJECTIVE_NAMES[objective]}": reward.reshape(
+            env.size, env.size, 5
+        )
         for name, reward_versions in rewards.items()
         for objective, reward in reward_versions.items()
     }
@@ -175,4 +184,5 @@ def main(
 
     fig = plot_heatmaps(models)
     fig.set_tight_layout(True)
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
     fig.savefig(save_path)

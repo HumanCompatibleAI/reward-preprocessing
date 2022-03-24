@@ -7,7 +7,7 @@ You will also need Mujoco. `mujoco_py` is installed as part of our
 environment (see below) but its
 [installation and troubleshooting instructions](https://github.com/openai/mujoco-py)
 might still be helpful.
-Once Mujoco is installed and has a license key, you can reproduce our environment with
+Once Mujoco is installed, you can reproduce our environment with
 ```
 poetry install
 pip install git+https://github.com/HumanCompatibleAI/imitation
@@ -46,14 +46,14 @@ In that case, we suggest you use `scripts/start_docker.sh`. More specifically:
   an interactive shell inside the Docker container. This repository will be
   mounted to `/reward_preprocessing` inside the container.
   
-Note: you musn't have a `.venv/` virtual environment inside this repository
+Note: you mustn't have a `.venv/` virtual environment inside this repository
 if you want to mount it into the container this way. `poetry` will use the mounted repository otherwise.
 By default, `poetry` creates virtual environments in a separate
 location anyway, so if you followed our suggested setup above (or didn't create
 a virtual environment on the host machine at all), you should be fine.
 Alternatively, you can change 
 [this setting](https://python-poetry.org/docs/configuration/#virtualenvsin-project)
-to `false` on the Docker container (haven't tested that though).
+to `false` on the Docker container.
 
 `ci/docker.sh` is a helper script to build the Docker image, test it, and then
 push it to DockerHub. You will need to set the `MUJOCO_KEY_URL` environment variable
@@ -65,10 +65,54 @@ MUJOCO_KEY_URL="https://..." ci/docker.sh
 Mujoco was installed correctly in the image).
 
 ## Running experiments
-Main entry point is `scripts/interpret.sh` for reasonable defaults
-or `src/reward_preprocessing/interpret.py` for more flexibility.
+The experimental pipeline consists of three to four steps:
+1. Create the reward models that should be visualized (either by using `imitation`
+   to train models, or by using `create_models.py` to generate ground truth
+   reward functions)
+2. In a non-tabular setting: generate rollouts to use for preprocessing and
+   visualization. This usually means training an expert policy and collecting rollouts
+   from that.
+3. Use `preprocess.py` to preprocess the reward function.
+4. Use `plot_heatmaps.py` (for gridworlds) or `plot_reward_curves.py` (for other
+   environments) to plot the preprocessed rewards.
 
-TODO: document this in more detail, as well as other scripts.
+Below, we describe these in more detail.
+
+### Creating reward models
+The input to our preprocessing pipeline is an `imitation` `RewardNet`,
+saved as a `.pt` file. You can create one using any of the reward learning
+algorithms in `imitation`, or your own implementation.
+
+In our paper, we also have experiments on shaped versions of the ground truth
+reward. To simplify the rest of the pipeline, we have implemented these
+as simple static `RewardNet`s, which can be stored to disk using `create_models.py`.
+(This will store all the different versions in `results/ground_truth_models`.)
+
+### Creating rollouts
+Tabular environments do not require samples for preprocessing, since we can optimize
+the interpretability objective over the entire space of transitions. But for non-tabular
+environments, a transition distribution to optimize over is needed. Specifically,
+the preprocessing step requires a sequence of `imitation`s `TrajectoryWithRew`.
+
+The source of these trajectories can be one of several options, as well as a combination
+of those. But the most important cases are:
+- a pickled file of trajectories, specified as `rollouts=[(0, None, "<rolout name>", "path/to/rollouts.pkl")]`
+  in the command line arguments
+- rollouts generated on the fly using some policy, specified as `rollouts=[(0, "path/to/policy.zip", "<rollout name>)]`
+
+Since always generating rollouts on the fly is inefficient, we have the helper script `create_rollouts.py`
+that takes some rollout configuration (such as the second one above) and produces a pickled file with
+the corresponding rollouts, which can then be used during further stages using the first example above.
+
+### Preprocessing
+The main part of our pipeline is `preprocess.py`, which takes in a `rollouts=...` config as just described (not required
+in a tabular setting) and a `model_path=path/to/reward_model.pt` config, and then produces preprocessed versions
+of the input model (also stored as `.pt` files).
+
+An example command for gridworld would be:
+```python -m reward_preprocessing.preprocess with env.empty_maze_10 model_path=path/to/reward_net.pt save_path=path/to/output_folder```
+
+The `env.empty_maze_10` part specifies the environment (in this case, using one of the preconfigured options).
 
 ## Directories
 `runs/` and `results/` are both in `.gitignore` and are meant to be used to

@@ -7,6 +7,7 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import DummyVecEnv
 import torch
 
+from reward_preprocessing.tabular_reward_net import TabularRewardNet
 from reward_preprocessing.utils import get_env_name
 
 
@@ -57,7 +58,7 @@ gym.envs.register(
 )
 
 
-@pytest.fixture(params=["EmptyMaze-v0", "MountainCar-v0", "HalfCheetah-v3"])
+@pytest.fixture(params=["reward_preprocessing/EmptyMaze4-v0", "MountainCar-v0"])
 def env(request):
     """Return a gym environment."""
     from reward_preprocessing.env import create_env
@@ -125,6 +126,13 @@ def agent_path(agent, tmp_path):
 @pytest.fixture
 def model(env):
     """Return an (untrained) dummy reward model."""
+    if isinstance(env.observation_space, gym.spaces.Discrete):
+        return TabularRewardNet(
+            env.observation_space,
+            env.action_space,
+            use_action=False,
+            use_next_state=True,
+        )
     return BasicRewardNet(
         env.observation_space, env.action_space, use_action=False, use_next_state=True
     )

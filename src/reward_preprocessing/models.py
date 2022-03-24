@@ -1,15 +1,16 @@
 from typing import Tuple
 
 import gym
-from imitation.envs import maze, mountain_car  # noqa: F401
 from imitation.rewards.reward_nets import RewardNet
 import numpy as np
 import torch
 
+from reward_preprocessing.env import maze, mountain_car  # noqa: F401
 
-class EmptyMazeRewardNet(RewardNet):
-    def __init__(self, size: int, **kwargs):
-        env = gym.make(f"imitation/EmptyMaze{size}-v0", **kwargs)
+
+class MazeRewardNet(RewardNet):
+    def __init__(self, size: int, maze_name: str = "EmptyMaze", **kwargs):
+        env = gym.make(f"reward_preprocessing/{maze_name}{size}-v0", **kwargs)
         self.rewards = env.rewards
         super().__init__(
             observation_space=env.observation_space, action_space=env.action_space
@@ -52,7 +53,7 @@ class EmptyMazeRewardNet(RewardNet):
 
 class MountainCarRewardNet(RewardNet):
     def __init__(self, **kwargs):
-        self.env = gym.make(f"imitation/MountainCar-v0", **kwargs).unwrapped
+        self.env = gym.make("imitation/MountainCar-v0", **kwargs).unwrapped
         super().__init__(self.env.observation_space, self.env.action_space)
 
     def forward(

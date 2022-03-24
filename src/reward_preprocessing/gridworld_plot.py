@@ -22,7 +22,6 @@ import functools
 import itertools
 import math
 from typing import Iterable, Mapping, Optional, Tuple
-from unittest import mock
 
 import matplotlib
 import matplotlib.colors as mcolors
@@ -123,23 +122,12 @@ def _reward_draw_spline(
     color = mappable.to_rgba(reward)
 
     # Add annotation
-    text = f"{reward:.0f}"
     lum = sns.utils.relative_luminance(color)
-    text_color = ".15" if lum > 0.408 else "w"
     hatch_color = ".5" if lum > 0.408 else "w"
     xy = pos + 0.5
 
     if tuple(direction) != (0, 0):
         xy = xy + annot_padding * direction
-    fontweight = "bold" if optimal else None
-    # ax.annotate(
-    #     text,
-    #     xy=xy,
-    #     ha="center",
-    #     va="center_baseline",
-    #     color=text_color,
-    #     fontweight=fontweight,
-    # )
 
     return vert, color, hatch_color
 
@@ -170,9 +158,9 @@ def _reward_draw(
         fig: figure to plot on.
         ax: the axis on the figure to plot on.
         mappable: color map for heatmap.
-        from_dest: if True, the triangular wedges represent reward when arriving into this
-        cell from the adjacent cell; if False, represent reward when leaving this cell into
-        the adjacent cell.
+        from_dest: if True, the triangular wedges represent reward when arriving into
+        this cell from the adjacent cell; if False, represent reward when leaving this
+        cell into the adjacent cell.
         edgecolor: color of edges.
     """
     # optimal_actions = optimal_mask(state_action_reward, discount)
@@ -249,7 +237,8 @@ def plot_gridworld_rewards(
     Plots heatmaps of reward for the gridworld.
 
     Args:
-      - reward_arrays: a mapping to three-dimensional arrays specifying the gridworld rewards.
+      - reward_arrays: a mapping to three-dimensional arrays specifying the gridworld
+        rewards.
       - ncols: number of columns per row.
       - vmin: the start of the color range; if unspecified, `min(reward_arrays)`.
       - vmax: the end of the color range; if unspecified, `max(reward_arrays)`.
@@ -258,10 +247,11 @@ def plot_gridworld_rewards(
       - **kwargs: passed through to `_reward_draw`.
 
     Returns:
-        A Figure containing heatmaps for each array in `reward_arrays`. Each heatmap consists of
-        a "supercell" for each state `(i,j)` in the original gridworld. This supercell contains a
-        central circle, representing the no-op action reward and four triangular wedges,
-        representing the left, up, right and down action rewards.
+        A Figure containing heatmaps for each array in `reward_arrays`. Each heatmap
+        consists of a "supercell" for each state `(i,j)` in the original gridworld.
+        This supercell contains a central circle, representing the no-op action reward
+        and four triangular wedges, representing the left, up, right and down action
+        rewards.
     """
     shapes = set((v.shape for v in reward_arrays.values()))
     assert len(shapes) == 1, "different shaped gridworlds cannot be in same plot"

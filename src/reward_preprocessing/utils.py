@@ -67,8 +67,8 @@ def use_rollouts(
     def config():
         rollouts = None  # each element should be a RolloutConfig instance
         num_workers = 0  # number of workers for the Dataloader
-        steps = 10000  # number of train transitions
-        test_steps = 5000  # number of test transitions
+        steps = None  # number of train transitions
+        test_steps = None  # number of test transitions
         batch_size = 32  # how many transitions per batch
 
         _ = locals()  # make flake8 happy

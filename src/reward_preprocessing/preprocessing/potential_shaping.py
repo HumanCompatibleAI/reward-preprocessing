@@ -70,7 +70,7 @@ class PotentialShaping(Preprocessor):
         if next_potential.ndim > 1:
             next_potential = next_potential.squeeze(dim=1)
         # if the next state is final, then we set it's potential to zero
-        # next_potential *= torch.logical_not(done)
+        next_potential *= torch.logical_not(done)
         assert rewards.shape == next_potential.shape
         return rewards + self.gamma * next_potential - current_potential
 
@@ -293,6 +293,10 @@ class TabularPotentialShaping(PotentialShaping):
         # TODO: this is not very robust, only works for square
         # mazes
         n = int(math.sqrt(self.observation_space.n))
+        if n ** 2 != self.observation_space.n:
+            raise NotImplementedError(
+                "Potential plotting is not implemented for this type of potential."
+            )
 
         im = ax.imshow(self.potential_data.detach().cpu().numpy().reshape(n, n))
         ax.set_axis_off()
@@ -348,9 +352,11 @@ class TabularPotentialShaping(PotentialShaping):
 
 # dict mapping environment name to potential that will be used by default
 DEFAULT_POTENTIALS = {
-    "imitation/EmptyMaze4-v0": "TabularPotentialShaping",
-    "imitation/EmptyMaze10-v0": "TabularPotentialShaping",
-    "imitation/MountainCar-v0": "MlpPotentialShaping",
+    "reward_preprocessing/EmptyMaze10-v0": "TabularPotentialShaping",
+    "reward_preprocessing/EmptyMaze4-v0": "TabularPotentialShaping",
+    "reward_preprocessing/KeyMaze6-v0": "TabularPotentialShaping",
+    "reward_preprocessing/MountainCar-v0": "MlpPotentialShaping",
+    "MountainCar-v0": "MlpPotentialShaping",
     "seals/MountainCar-v0": "LinearPotentialShaping",
     "seals/HalfCheetah-v0": "LinearPotentialShaping",
 }
@@ -382,8 +388,7 @@ def instantiate_potential(
         if env_name not in DEFAULT_POTENTIALS:
             raise ValueError(
                 f"No default potential shaping class for environment '{env_name}' "
-                "is set. You need to specify the type of potential to use "
-                "by setting optimize.potential"
+                "is set. You need to specify the type of potential to use."
             )
         potential_name = DEFAULT_POTENTIALS[env_name]
 

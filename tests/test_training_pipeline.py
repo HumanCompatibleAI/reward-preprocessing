@@ -1,28 +1,37 @@
-from reward_preprocessing.interpret import ex as interpret_ex
+import os
+
+import gym
+
+from reward_preprocessing.create_rollouts import ex as create_rollouts_ex
+from reward_preprocessing.env import maze  # noqa: F401
+from reward_preprocessing.preprocess import preprocess_ex as preprocess_ex
 from reward_preprocessing.utils import get_env_name
 
 
-def test_interpret_experiment(env, model_path, tmp_path):
-    interpret_ex.run(
+def test_create_rollouts(env, agent_path, tmp_path):
+    create_rollouts_ex.run(
         config_updates={
-            "run_dir": str(tmp_path),
-            "model_path": str(model_path),
-            "optimize.enabled": True,
-            "optimize.steps": 2,
-            "optimize.batch_size": 2,
-            "noise.enabled": True,
-            "rewards.rollout_steps": 2,
-            "rewards.bins": 2,
-            "rewards.steps": 4,
-            "transition_visualization.steps": 10,
-            "transition_visualization.num": 2,
-            "rollout_visualization.plot_shape": (2, 2),
+            "rollouts": [(0.5, agent_path, "mixture")],
+            "min_timesteps": 2,
+            "out_dir": str(tmp_path),
             "env.name": get_env_name(env),
         },
-        named_configs=[
-            "optimize.random_rollouts",
-            "rewards.random_rollouts",
-            "transition_visualization.random_rollouts",
-            "rollout_visualization.random_rollouts",
-        ],
     )
+
+    assert os.path.exists(os.path.join(tmp_path, "mixture.pkl"))
+
+
+def test_preprocess_ex(env, data_path, model_path, tmp_path):
+    rollouts = None
+    if isinstance(env.observation_space, gym.spaces.Box):
+        rollouts = [(0, None, "dataset", data_path)]
+    preprocess_ex.run(
+        config_updates={
+            "rollouts": rollouts,
+            "model_path": model_path,
+            "save_path": os.path.join(tmp_path, "model"),
+            "env.name": get_env_name(env),
+        },
+    )
+
+    assert os.path.exists(os.path.join(tmp_path, "model.unmodified.pt"))

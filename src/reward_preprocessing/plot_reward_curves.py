@@ -1,7 +1,6 @@
 from pathlib import Path
 from typing import Mapping, Sequence
 
-import gym
 from imitation.data.rollout import flatten_trajectories_with_rew
 from imitation.rewards.reward_nets import RewardNet
 import matplotlib.pyplot as plt
@@ -23,16 +22,8 @@ SHAPINGS = {
         "priority": 0,
     },
     "dense": {
-        "pretty_name": "Linear shaping",
+        "pretty_name": "Value shaped",
         "priority": 1,
-    },
-    "antidense": {
-        "pretty_name": "Neg. linear shaping",
-        "priority": 2,
-    },
-    "random": {
-        "pretty_name": "Random shaping",
-        "priority": 3,
     },
 }
 
@@ -56,20 +47,24 @@ def config():
     font_size = 5.5
     rollout_steps = 1000  # length of the plotted rollouts
     rollout_cfg = None
+    locals()  # make flake8 happy
+
 
 @reward_curve_ex.named_config
 def log():
     objectives = ["unmodified", "sparse_log", "smooth_log"]
+    locals()  # make flake8 happy
+
 
 @reward_curve_ex.named_config
 def l1():
     objectives = ["unmodified", "sparse_l1", "smooth_l1"]
+    locals()  # make flake8 happy
 
 
 @reward_curve_ex.capture
 def plot_reward_curves(
     models: Mapping[str, Mapping[str, RewardNet]],
-    gamma: float,
     objectives: Sequence[str],
     font_size: int,
     rollout_steps: int,
@@ -89,12 +84,6 @@ def plot_reward_curves(
         rollout_cfg, create_env, min_timesteps=rollout_steps, seed=_seed
     )
     transitions = flatten_trajectories_with_rew(trajectories)
-    # actual_rewards = transitions.rews
-    # ax[i].plot(
-    #     actual_rewards,
-    #     label="Ground truth",
-    #     linewidth=1,
-    # )
 
     dataloader = torch.utils.data.DataLoader(
         transitions,
@@ -107,7 +96,7 @@ def plot_reward_curves(
     n_cols = len(objectives)
     n_rows = len(models)
     fig, ax = plt.subplots(
-        n_rows, n_cols, figsize=(5.5, 6.5), squeeze=False, sharex=True, sharey=True
+        n_rows, n_cols, figsize=(5.5, 3), squeeze=False, sharex=True, sharey=True
     )
 
     for row, (model_name, model_versions) in enumerate(models.items()):
@@ -129,14 +118,9 @@ def plot_reward_curves(
                     predicted_rewards = np.concatenate(
                         [predicted_rewards, predicted_rewards_batch.cpu().numpy()]
                     )
-            if objective in {"smooth_log", "smooth_l1"}:
-                predicted_rewards -= predicted_rewards[0]
+            predicted_rewards -= predicted_rewards[0]
 
-            ax[row, col].plot(
-                predicted_rewards,
-                linewidth=0.4
-            )
-            ax[row, col].set_ylim(top=8, bottom=-6)
+            ax[row, col].plot(predicted_rewards, linewidth=0.4)
             ax[row, col].set_xlim(left=0, right=1000)
 
             ax[row, col].set(
