@@ -53,7 +53,7 @@ class MockEnv(gym.Env):
         pass
 
 
-gym.envs.register(
+gym.envs.register(  # pytype: disable=attribute-error
     id="reward_preprocessing/MockEnv-v0", entry_point=MockEnv, max_episode_steps=100
 )
 
