@@ -28,7 +28,6 @@ import matplotlib.colors as mcolors
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
-import seaborn as sns
 import torch
 
 
@@ -111,7 +110,7 @@ def _reward_draw_spline(
     mappable: matplotlib.cm.ScalarMappable,
     annot_padding: float,
     ax: plt.Axes,
-) -> Tuple[np.ndarray, Tuple[float, ...], str]:
+) -> Tuple[np.ndarray, Tuple[float, ...]]:
     # Compute shape position and color
     pos = np.array([x, y])
     direction = np.array(ACTION_DELTA[action])
@@ -121,15 +120,12 @@ def _reward_draw_spline(
     vert = pos + OFFSETS[tuple(direction)]
     color = mappable.to_rgba(reward)
 
-    # Add annotation
-    lum = sns.utils.relative_luminance(color)
-    hatch_color = ".5" if lum > 0.408 else "w"
     xy = pos + 0.5
 
     if tuple(direction) != (0, 0):
         xy = xy + annot_padding * direction
 
-    return vert, color, hatch_color
+    return vert, color
 
 
 def _make_triangle(vert, color, **kwargs):
@@ -189,7 +185,7 @@ def _reward_draw(
             assert action != 0
             continue
 
-        vert, color, hatch_color = _reward_draw_spline(
+        vert, color = _reward_draw_spline(
             x, y, action, optimal, reward, from_dest, mappable, annot_padding, ax
         )
 
@@ -199,21 +195,7 @@ def _reward_draw(
         else:
             fn = _make_triangle
         patches = circle_patches if action == 0 else triangle_patches
-        if hatch:  # draw the hatch using a different color
-            patches.append(
-                fn(
-                    vert,
-                    tuple(color),
-                    linewidth=0.15,
-                    edgecolor=hatch_color,
-                    hatch=hatch,
-                )
-            )
-            patches.append(
-                fn(vert, tuple(color), linewidth=0.15, edgecolor=edgecolor, fill=False)
-            )
-        else:
-            patches.append(fn(vert, tuple(color), linewidth=0.15, edgecolor=edgecolor))
+        patches.append(fn(vert, tuple(color), linewidth=0.15, edgecolor=edgecolor))
 
     for p in triangle_patches + circle_patches:
         # need to draw circles on top of triangles
