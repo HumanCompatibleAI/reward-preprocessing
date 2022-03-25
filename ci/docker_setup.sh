@@ -11,8 +11,6 @@ cd /reward_preprocessing
 poetry run pip install -e /imitation
 poetry run pip install -e .
 
-# Download the Mujoco key
-curl -o /root/.mujoco/mjkey.txt "$MUJOCO_KEY_URL"
 # put the weights & biases credentials into .netrc
 echo "$NETRC_CONTENTS" > /root/.netrc
 # afterwards, give the user an interactive shell

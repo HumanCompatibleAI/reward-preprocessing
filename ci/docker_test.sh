@@ -1,2 +1,2 @@
-curl -o /root/.mujoco/mjkey.txt "$MUJOCO_KEY_URL"
+#!/bin/sh
 poetry run pytest -m "not expensive"

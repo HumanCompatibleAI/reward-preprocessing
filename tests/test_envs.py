@@ -6,17 +6,18 @@ import pytest
 import reward_preprocessing.env  # noqa: F401
 
 
-@pytest.mark.parametrize("name", ["EmptyMaze-v0", "MountainCar-v0", "HalfCheetah-v2"])
+@pytest.mark.parametrize(
+    "name", ["reward_preprocessing/EmptyMaze4-v0", "MountainCar-v0"]
+)
 def test_env_creation(name):
     env = gym.make(name)
 
-    obs = env.reset()
+    env.reset()
     for _ in range(10):
         action = env.action_space.sample()
-        obs, reward, done, info = env.step(action)
+        _, reward, done, info = env.step(action)
         if done:
-            obs = env.reset()
-        assert isinstance(obs, np.ndarray)
+            env.reset()
         assert isinstance(reward, float)
         assert isinstance(done, bool)
         assert isinstance(info, dict)

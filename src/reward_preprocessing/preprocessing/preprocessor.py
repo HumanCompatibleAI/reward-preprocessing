@@ -17,12 +17,13 @@ class Preprocessor(RewardNet):
         model: the RewardNet to be wrapped
     """
 
-    def __init__(self, model: RewardNet):
+    def __init__(self, model: RewardNet, freeze_model: bool = True):
         super().__init__(
             model.observation_space, model.action_space, model.normalize_images
         )
         self.model = model
-        self.freeze_model()
+        if freeze_model:
+            self.freeze_model()
 
     def forward(
         self,
@@ -53,3 +54,39 @@ class Preprocessor(RewardNet):
             param.requires_grad = True
         if self._was_training:
             self.model.train()
+
+    @property
+    def unwrapped(self):
+        if isinstance(self.model, Preprocessor):
+            return self.model.unwrapped
+        else:
+            return self.model
+
+
+class ScaleShift(Preprocessor):
+    def __init__(
+        self,
+        model: RewardNet,
+        scale: bool = True,
+        shift: bool = True,
+        freeze_model: bool = True,
+    ):
+        super().__init__(model, freeze_model=freeze_model)
+        if scale:
+            self.scale = torch.nn.Parameter(torch.tensor(1.0))
+        if shift:
+            self.shift = torch.nn.Parameter(torch.tensor(0.0))
+
+    def forward(
+        self,
+        state: torch.Tensor,
+        action: torch.Tensor,
+        next_state: torch.Tensor,
+        done: torch.Tensor,
+    ) -> torch.Tensor:
+        out = self.model(state, action, next_state, done)
+        if hasattr(self, "shift"):
+            out = out - self.shift
+        if hasattr(self, "scale"):
+            out = self.scale * out
+        return out

@@ -1,12 +1,14 @@
+import itertools
 import random
 from typing import List
 
-from gym.spaces import Box, Discrete
+import gym
+from gym.spaces import Discrete
 from mazelab import BaseEnv, BaseMaze
 from mazelab import DeepMindColor as color
-from mazelab import Object, VonNeumannMotion
+from mazelab import Object, VonNeumannNoOpMotion
 import numpy as np
-import torch
+import sacred
 
 
 class Maze(BaseMaze):
@@ -20,7 +22,11 @@ class Maze(BaseMaze):
 
     def make_objects(self):
         free = Object(
-            "free", 0, color.free, False, np.stack(np.where(self.data == 0), axis=1)
+            "free",
+            0,
+            color.free,
+            False,
+            np.stack(np.where(self.data == 0), axis=1),
         )
         obstacle = Object(
             "obstacle",
@@ -29,28 +35,114 @@ class Maze(BaseMaze):
             True,
             np.stack(np.where(self.data == 1), axis=1),
         )
-        agent = Object("agent", 2, color.agent, False, [])
-        goal = Object("goal", 3, color.goal, False, [])
-        return free, obstacle, agent, goal
+        key = Object("key", 2, color.button, False, [])
+        agent = Object("agent", 3, color.agent, False, [])
+        goal = Object("goal", 4, color.goal, False, [])
+        return free, obstacle, key, agent, goal
 
 
 class MazeEnv(BaseEnv):
-    def __init__(self, size: int = 6, random_start: bool = True):
+    def __init__(
+        self,
+        size: int = 10,
+        random_start: bool = True,
+        reward: str = "goal",
+        shaping: str = "unshaped",
+        key: bool = False,
+        gamma: float = 0.99,
+    ):
         # among other things, this calls self.seed() so that the self.rng
         # object exists
         super().__init__()
+
+        n_obs = size ** 2
+        # if we are using a key, we have twice as many observations
+        if key:
+            n_obs *= 2
+
         x = np.zeros((size, size))
-        self.start_idx = [[1, 1]]
-        self.goal_idx = [[4, 4]]
+        self.size = size
+        self.start_idx = [[size - 2, 1]]
+        self.goal_idx = [[size - 2, size - 2]]
+        self.using_key = key
+        self.has_key = False
+        self.key_idx = [[1, 1]]
         self.random_start = random_start
+        self.gamma = gamma
 
         self.maze = Maze(x)
-        self.motions = VonNeumannMotion()
-
-        self.observation_space = Box(
-            low=0, high=len(self.maze.objects), shape=self.maze.size, dtype=np.uint8
-        )
+        self.motions = VonNeumannNoOpMotion()
+        self.observation_space = Discrete(n_obs)
         self.action_space = Discrete(len(self.motions))
+
+        # The remainder of this function computes a lookup table for rewards,
+        # which makes certain things such as plotting easier than computing
+        # them on the fly.
+        self.rewards = np.zeros((self.observation_space.n, self.observation_space.n))
+
+        if reward == "goal":
+            pass
+        elif reward == "path":
+            self.rewards -= 0.4
+            diagonal = size * np.arange(size) + np.arange(size)
+            off_diagonal = diagonal[:-1] + 1
+            self.rewards[diagonal] = 0
+            self.rewards[off_diagonal] = 0
+        else:
+            raise ValueError(f"Unknown reward type {reward}")
+
+        if shaping == "unshaped":
+            pass
+        elif shaping == "dense":
+            for i, j in itertools.product(range(size), repeat=2):
+                pos = self._to_idx((i, j))
+
+                potential = -(
+                    abs(i - self.goal_idx[0][0]) + abs(j - self.goal_idx[0][1])
+                )
+
+                self.rewards[pos] -= potential
+                self.rewards[:, pos] += self.gamma * potential
+        elif shaping == "antidense":
+            for i, j in itertools.product(range(size), repeat=2):
+                pos = self._to_idx((i, j))
+
+                potential = abs(i - self.goal_idx[0][0]) + abs(j - self.goal_idx[0][1])
+
+                self.rewards[pos] -= potential
+                self.rewards[pos] += self.gamma * potential
+        elif shaping == "random":
+            # sample potential uniformly between [-1, 1]
+            rng = np.random.default_rng(seed=0)
+            potential = 2 * rng.random(size ** 2) - 1
+            for i, j in itertools.product(range(size), repeat=2):
+                pos = self._to_idx((i, j))
+
+                self.rewards[pos] -= potential[pos]
+                self.rewards[pos] += self.gamma * potential[pos]
+        else:
+            raise ValueError(f"Unknown shaping type {shaping}")
+
+        if key:
+            # Copy the reward values to the section with the key
+            x_coords, y_coords = np.meshgrid(
+                range(size ** 2), range(size ** 2), indexing="ij"
+            )
+            self.rewards[x_coords + size ** 2, y_coords] = self.rewards[
+                x_coords, y_coords
+            ]
+            self.rewards[x_coords, y_coords + size ** 2] = self.rewards[
+                x_coords, y_coords
+            ]
+            self.rewards[x_coords + size ** 2, y_coords + size ** 2] = self.rewards[
+                x_coords, y_coords
+            ]
+
+        # Finally, add the actual sparse goal reward
+        goal_pos = size * self.goal_idx[0][0] + self.goal_idx[0][1]
+        if key:
+            goal_pos += size ** 2
+        self.rewards[goal_pos, :] = 1.0
 
     def seed(self, seed: int = 0) -> List[int]:
         super().seed(seed)
@@ -67,20 +159,67 @@ class MazeEnv(BaseEnv):
         valid = self._is_valid(new_position)
         if valid:
             self.maze.objects.agent.positions = [new_position]
-
-        if self._is_goal(new_position):
-            reward = 1.0
-            done = True
-        elif not valid:
-            reward = 0.0
-            done = False
         else:
-            reward = 0.0
-            done = False
-        return self.maze.to_value(), reward, done, {}
+            new_position = current_position
+
+        if (
+            len(self.maze.objects.key.positions) > 0
+            and new_position == self.maze.objects.key.positions[0]
+        ):
+            self.has_key = True
+            self.maze.objects.key.positions = []
+
+        done = False
+        reward = self._reward(current_position, action, new_position, self.has_key)
+        return self._get_obs(), reward, done, {}
+
+    def _step(self, state, action):
+        """Compute a step from an arbitrary starting state."""
+        motion = self.motions[action]
+
+        x_pos, y_pos, has_key = self._to_coords(state)
+        new_position = [
+            x_pos + motion[0],
+            y_pos + motion[1],
+        ]
+        valid = self._is_valid(new_position)
+        if not valid:
+            new_position = [x_pos, y_pos]
+
+        new_has_key = has_key
+        if (
+            len(self.maze.objects.key.positions) > 0
+            and new_position == self.maze.objects.key.positions[0]
+        ):
+            new_has_key = True
+
+        new_state = self._to_idx(new_position) + new_has_key * self.size ** 2
+        return new_state, valid
+
+    def _reward(self, state, action, next_state, has_key) -> float:
+        return self.rewards[
+            self._to_idx(state) + has_key * self.size ** 2,
+            self._to_idx(next_state) + has_key * self.size ** 2,
+        ]
+
+    def _to_idx(self, position):
+        return self.size * position[0] + position[1]
+
+    def _to_coords(self, idx):
+        has_key = idx // self.size ** 2
+        assert has_key in [0, 1]
+        idx = idx % self.size ** 2
+        return idx // self.size, idx % self.size, has_key
+
+    def _get_obs(self):
+        current_position = self.maze.objects.agent.positions[0]
+        return self._to_idx(current_position) + self.has_key * self.size ** 2
 
     def reset(self):
         self.maze.objects.goal.positions = self.goal_idx
+        if self.using_key:
+            self.maze.objects.key.positions = self.key_idx
+        self.has_key = False
         if self.random_start:
             available_positions = [
                 pos
@@ -92,14 +231,17 @@ class MazeEnv(BaseEnv):
                 # just means that there is no wall there, but the goal
                 # might still be on this field. So we need to filter that
                 # out because the agent shouldn't start on top of the goal.
-                if pos not in self.maze.objects.goal.positions
+                if (
+                    pos not in self.maze.objects.goal.positions
+                    and pos not in self.maze.objects.key.positions
+                )
             ]
             self.maze.objects.agent.positions = [
-                list(self.rng.choice(available_positions))
+                list(self.rng.choice(available_positions)),
             ]
         else:
             self.maze.objects.agent.positions = [self.start_idx]
-        return self.maze.to_value()
+        return self._get_obs()
 
     def _is_valid(self, position):
         # position indices must be non-negative
@@ -125,42 +267,64 @@ class MazeEnv(BaseEnv):
         return self.maze.to_rgb()
 
 
-def get_agent_positions(obs: torch.Tensor) -> torch.Tensor:
-    """Get the positions of an agent in a batch of observations.
+gym.register(
+    "reward_preprocessing/EmptyMaze10-v0",
+    entry_point=MazeEnv,
+    max_episode_steps=20,
+    kwargs={"size": 10},
+)
 
-    If no agent is found, then the goal position is returned instead
-    (that's because in the Mazelab environment, the goal hides the
-    agent in the terminal state).
+gym.register(
+    "reward_preprocessing/KeyMaze10-v0",
+    entry_point=MazeEnv,
+    max_episode_steps=30,
+    kwargs={"size": 10, "key": True},
+)
 
-    Currently, no checks regarding the number of goals and agents happen
-    in this function, make sure not to pass invalid input or the results
-    could be extremely weird!
-    """
-    assert obs.ndim == 3, "observation must have shape (batch_size, x_size, y_size)"
-    batch_size, x_size, y_size = obs.shape
+gym.register(
+    "reward_preprocessing/EmptyMaze4-v0",
+    entry_point=MazeEnv,
+    max_episode_steps=8,
+    kwargs={"size": 4},
+)
 
-    # {agent/goal}_positions have shape (num_{agents/goals}, 3)
-    # where the second axis contains indices into the three axes
-    # of obs.
-    goal_positions = (obs == 3).nonzero()
-    agent_positions = (obs == 2).nonzero()
-    # TODO: It would be nice to validate here that there is at most one agent
-    # in each observation and that if there is no agent, there is exactly
-    # one goal. But doing that in vectorized form seems tricky.
+gym.register(
+    "reward_preprocessing/KeyMaze6-v0",
+    entry_point=MazeEnv,
+    max_episode_steps=20,
+    kwargs={"size": 6, "key": True},
+)
 
-    # these will contain the x and y agent positions for all the observations
-    x = torch.empty(batch_size, dtype=torch.long, device=obs.device)
-    y = torch.empty(batch_size, dtype=torch.long, device=obs.device)
 
-    # If the agent reaches the goal, the agent vanishes.
-    # So we first fill out the position using the goal
-    # positions. Then, we overwrite the positions for
-    # those cases where the agent is visible
-    x[goal_positions[:, 0]] = goal_positions[:, 1]
-    y[goal_positions[:, 0]] = goal_positions[:, 2]
+def use_config(
+    ex: sacred.Experiment,
+) -> None:
+    @ex.named_config
+    def dense():
+        env_make_kwargs = {"shaping": "dense"}
+        locals()  # make flake8 happy
 
-    x[agent_positions[:, 0]] = agent_positions[:, 1]
-    y[agent_positions[:, 0]] = agent_positions[:, 2]
+    @ex.named_config
+    def antidense():
+        env_make_kwargs = {"shaping": "antidense"}
+        locals()  # make flake8 happy
 
-    # finally, we encode each (x, y) position as a single integer
-    return y + x * y_size
+    @ex.named_config
+    def random():
+        env_make_kwargs = {"shaping": "random"}
+        locals()  # make flake8 happy
+
+    @ex.named_config
+    def unshaped():
+        env_make_kwargs = {"shaping": "unshaped"}
+        locals()  # make flake8 happy
+
+    @ex.named_config
+    def path():
+        env_make_kwargs = {"reward": "path"}
+        locals()  # make flake8 happy
+
+    @ex.named_config
+    def goal():
+        env_make_kwargs = {"reward": "goal"}
+        locals()  # make flake8 happy

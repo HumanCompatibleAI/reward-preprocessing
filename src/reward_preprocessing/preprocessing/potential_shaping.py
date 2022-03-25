@@ -7,10 +7,11 @@ states to floats. PotentialShaping is the most general case,
 while the other classes in this module are helper classes
 that use a particular type of potential.
 """
-from typing import Callable, Optional, Type
+import math
+from typing import Callable, Optional, Tuple, Type
 
 import gym
-from imitation.data.types import AnyPath, path_to_str
+from imitation.data.types import AnyPath, Transitions, path_to_str
 from imitation.rewards.reward_nets import RewardNet
 import matplotlib.pyplot as plt
 import numpy as np
@@ -21,7 +22,6 @@ from stable_baselines3.common.preprocessing import preprocess_obs
 import torch
 from torch import nn
 
-from reward_preprocessing.env.maze import get_agent_positions
 from reward_preprocessing.utils import instantiate
 
 from .preprocessor import Preprocessor
@@ -44,8 +44,9 @@ class PotentialShaping(Preprocessor):
         model: RewardNet,
         potential: Callable,
         gamma: float,
+        freeze_model: bool = True,
     ):
-        super().__init__(model)
+        super().__init__(model, freeze_model=freeze_model)
         self.potential = potential
         self.gamma = gamma
 
@@ -100,9 +101,28 @@ class PotentialShaping(Preprocessor):
         Returns:
             plt.Figure: a plot of the potential
         """
-        raise NotImplementedError(
-            "Potential plotting is not implemented for this type of potential."
-        )
+        space = self.observation_space
+        if not isinstance(space, gym.spaces.Box) or space.shape != (2,):
+            # we don't know how to handle state spaces that aren't 2D in general
+            raise NotImplementedError(
+                "Potential plotting is not implemented for this type of potential."
+            )
+
+        grid_size = 100
+
+        xs = np.linspace(space.low[0], space.high[0], grid_size, dtype=np.float32)
+        ys = np.linspace(space.low[1], space.high[1], grid_size, dtype=np.float32)
+        xx, yy = np.meshgrid(xs, ys)
+        values = np.stack([xx, yy], axis=2).reshape(-1, 2)
+
+        out = self.potential(torch.as_tensor(values)).detach().cpu().numpy()
+
+        out = out.reshape(grid_size, grid_size)
+        fig, ax = plt.subplots()
+        im = ax.imshow(out)
+        ax.set_axis_off()
+        fig.colorbar(im, ax=ax)
+        return fig
 
 
 class CriticPotentialShaping(PotentialShaping):
@@ -157,8 +177,9 @@ class PytorchPotentialShaping(PotentialShaping):
         model: RewardNet,
         potential: nn.Module,
         gamma: float,
+        freeze_model: bool = True,
     ):
-        super().__init__(model, potential, gamma)
+        super().__init__(model, potential, gamma, freeze_model=freeze_model)
 
     def plot(self) -> plt.Figure:
         space = self.observation_space
@@ -205,10 +226,10 @@ class PytorchPotentialShaping(PotentialShaping):
 class LinearPotentialShaping(PytorchPotentialShaping):
     """A potential shaping preprocessor with a learned linear potential."""
 
-    def __init__(self, model: RewardNet, gamma: float):
+    def __init__(self, model: RewardNet, gamma: float, freeze_model: bool = True):
         in_size = np.product(model.observation_space.shape)
         potential = nn.Sequential(nn.Flatten(), nn.Linear(in_size, 1))
-        super().__init__(model, potential, gamma)
+        super().__init__(model, potential, gamma, freeze_model=freeze_model)
 
 
 class MlpPotentialShaping(PytorchPotentialShaping):
@@ -228,6 +249,7 @@ class MlpPotentialShaping(PytorchPotentialShaping):
         gamma: float,
         hidden_size: int = 64,
         num_hidden: int = 1,
+        freeze_model: bool = True,
     ):
         in_size = np.product(model.observation_space.shape)
         layers = [nn.Flatten(), nn.Linear(in_size, hidden_size), nn.ReLU()]
@@ -242,20 +264,20 @@ class MlpPotentialShaping(PytorchPotentialShaping):
         layers.append(nn.Linear(hidden_size, 1))
 
         potential = nn.Sequential(*layers)
-        super().__init__(model, potential, gamma)
+        super().__init__(model, potential, gamma, freeze_model=freeze_model)
 
 
-class MazelabPotentialShaping(PotentialShaping):
-    """A preprocessor that adds a learned potential shaping in Mazelab environment."""
+class TabularPotentialShaping(PotentialShaping):
+    """A preprocessor that adds a learned potential shaping in tabular environments."""
 
-    def __init__(self, model: RewardNet, gamma: float):
-        super().__init__(model, self._potential, gamma)
-        in_size = np.product(model.observation_space.shape)
+    def __init__(self, model: RewardNet, gamma: float, freeze_model: bool = True):
+        super().__init__(model, self._potential, gamma, freeze_model=freeze_model)
+        assert isinstance(model.observation_space, gym.spaces.Discrete)
+        in_size = np.product(model.observation_space.n)
         self._data = nn.Parameter(torch.zeros(in_size))
 
     def _potential(self, states):
-        positions = get_agent_positions(states)
-        return self._data[positions]
+        return self._data[states]
 
     @property
     def potential_data(self) -> torch.Tensor:
@@ -268,22 +290,75 @@ class MazelabPotentialShaping(PotentialShaping):
     def plot(self) -> plt.Figure:
         fig, ax = plt.subplots()
 
-        im = ax.imshow(
-            self.potential_data.detach()
-            .cpu()
-            .numpy()
-            .reshape(*self.observation_space.shape)
-        )
+        # TODO: this is not very robust, only works for square
+        # mazes
+        n = int(math.sqrt(self.observation_space.n))
+        if n ** 2 != self.observation_space.n:
+            raise NotImplementedError(
+                "Potential plotting is not implemented for this type of potential."
+            )
+
+        im = ax.imshow(self.potential_data.detach().cpu().numpy().reshape(n, n))
         ax.set_axis_off()
         fig.colorbar(im, ax=ax)
         return fig
 
+    def preprocess(
+        self, transitions: Transitions
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Preprocess a batch of input transitions and convert it to PyTorch tensors.
+
+        The output of this function is suitable for its forward pass,
+        so a typical usage would be ``model(*model.preprocess(transitions))``.
+        """
+        state_th = torch.as_tensor(
+            transitions.obs, device=self.device, dtype=torch.long
+        )
+        action_th = torch.as_tensor(transitions.acts, device=self.device)
+        next_state_th = torch.as_tensor(
+            transitions.next_obs, device=self.device, dtype=torch.long
+        )
+        done_th = torch.as_tensor(transitions.dones, device=self.device)
+
+        del transitions  # unused
+
+        assert state_th.shape == next_state_th.shape
+        return state_th, action_th, next_state_th, done_th
+
+    def predict(
+        self,
+        state: np.ndarray,
+        action: np.ndarray,
+        next_state: np.ndarray,
+        done: np.ndarray,
+    ) -> np.ndarray:
+        """Compute rewards for a batch of transitions without gradients.
+        Also performs some preprocessing and numpy conversion.
+        """
+        state_th = torch.as_tensor(state, device=self.device, dtype=torch.long)
+        action_th = torch.as_tensor(action, device=self.device)
+        next_state_th = torch.as_tensor(
+            next_state, device=self.device, dtype=torch.long
+        )
+        done_th = torch.as_tensor(done, device=self.device)
+
+        with torch.no_grad():
+            rew_th = self(state_th, action_th, next_state_th, done_th)
+
+        rew = rew_th.detach().cpu().numpy().flatten()
+        assert rew.shape == state.shape[:1]
+        return rew
+
 
 # dict mapping environment name to potential that will be used by default
 DEFAULT_POTENTIALS = {
-    "EmptyMaze-v0": "MazelabPotentialShaping",
-    "MountainCar-v0": "LinearPotentialShaping",
-    "HalfCheetah-v3": "LinearPotentialShaping",
+    "reward_preprocessing/EmptyMaze10-v0": "TabularPotentialShaping",
+    "reward_preprocessing/EmptyMaze4-v0": "TabularPotentialShaping",
+    "reward_preprocessing/KeyMaze6-v0": "TabularPotentialShaping",
+    "reward_preprocessing/MountainCar-v0": "MlpPotentialShaping",
+    "MountainCar-v0": "MlpPotentialShaping",
+    "seals/MountainCar-v0": "LinearPotentialShaping",
+    "seals/HalfCheetah-v0": "LinearPotentialShaping",
 }
 
 
@@ -313,8 +388,7 @@ def instantiate_potential(
         if env_name not in DEFAULT_POTENTIALS:
             raise ValueError(
                 f"No default potential shaping class for environment '{env_name}' "
-                "is set. You need to specify the type of potential to use "
-                "by setting sparsify.potential"
+                "is set. You need to specify the type of potential to use."
             )
         potential_name = DEFAULT_POTENTIALS[env_name]
 

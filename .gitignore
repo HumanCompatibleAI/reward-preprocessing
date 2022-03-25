@@ -3,8 +3,13 @@ __pycache__/
 .ipynb_checkpoints
 .venv
 *.egg-info
+*.DS_Store
 /runs
 /results
+/old_results
+/output
 /build
 /dist
 /wandb
+/processed
+/fig

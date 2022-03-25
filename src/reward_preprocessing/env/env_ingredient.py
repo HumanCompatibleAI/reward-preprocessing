@@ -5,6 +5,9 @@ from sacred import Ingredient
 import seals  # noqa: F401
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
+# avoid name clash, we don't use this directly anyway
+from reward_preprocessing.env import maze  # noqa: F401
+from reward_preprocessing.env import mountain_car as mountain_car_  # noqa: F401
 from reward_preprocessing.utils import instantiate
 
 env_ingredient = Ingredient("env")
@@ -12,7 +15,7 @@ env_ingredient = Ingredient("env")
 
 @env_ingredient.config
 def config():
-    name = "EmptyMaze-v0"  # gym environment id
+    name = None  # gym environment id
     options = {}  # gym env kwargs
     stats_path = None  # path to stats file for normalization (incl. extension)
     # list of complete gym wrapper names (incl. module), from inner- to outermost
@@ -24,10 +27,64 @@ def config():
 
 
 @env_ingredient.named_config
-def empty_maze():
-    # this is currently the default anyway, but it's needed to
-    # make the wrapper script work
-    name = "EmptyMaze-v0"
+def empty_maze_10():
+    name = "reward_preprocessing/EmptyMaze10-v0"
+    _ = locals()  # make flake8 happy
+    del _
+
+
+@env_ingredient.named_config
+def empty_maze_4():
+    name = "reward_preprocessing/EmptyMaze4-v0"
+    _ = locals()  # make flake8 happy
+    del _
+
+
+@env_ingredient.named_config
+def key_maze_6():
+    name = "reward_preprocessing/KeyMaze6-v0"
+    _ = locals()  # make flake8 happy
+    del _
+
+
+@env_ingredient.named_config
+def unshaped():
+    options = {"shaping": "unshaped"}
+    _ = locals()  # make flake8 happy
+    del _
+
+
+@env_ingredient.named_config
+def goal():
+    options = {"reward": "goal"}
+    _ = locals()  # make flake8 happy
+    del _
+
+
+@env_ingredient.named_config
+def dense():
+    options = {"shaping": "dense"}
+    _ = locals()  # make flake8 happy
+    del _
+
+
+@env_ingredient.named_config
+def antidense():
+    options = {"shaping": "antidense"}
+    _ = locals()  # make flake8 happy
+    del _
+
+
+@env_ingredient.named_config
+def random():
+    options = {"shaping": "random"}
+    _ = locals()  # make flake8 happy
+    del _
+
+
+@env_ingredient.named_config
+def path():
+    options = {"reward": "path"}
     _ = locals()  # make flake8 happy
     del _
 
@@ -35,7 +92,18 @@ def empty_maze():
 @env_ingredient.named_config
 def mountain_car():
     name = "seals/MountainCar-v0"
-    stats_path = "results/agents/mountain_car/vec_normalize.pkl"
+    stats_path = "old_results/agents/mountain_car/vec_normalize.pkl"
+    normalize = True
+    _ = locals()  # make flake8 happy
+    del _
+
+
+@env_ingredient.named_config
+def shaped_mountain_car():
+    name = "imitation/MountainCar-v0"
+    stats_path = (
+        "results/expert_demos/seals_mountain_car/policies/final/vec_normalize.pkl"
+    )
     normalize = True
     _ = locals()  # make flake8 happy
     del _
@@ -61,6 +129,15 @@ def half_cheetah():
 def hopper():
     name = "seals/Hopper-v0"
     stats_path = "results/agents/hopper/vec_normalize.pkl"
+    normalize = True
+    _ = locals()  # make flake8 happy
+    del _
+
+
+@env_ingredient.named_config
+def sparse_reacher():
+    name = "imitation/SparseReacher-v0"
+    stats_path = "results/agents/sparse_reacher/vec_normalize.pkl"
     normalize = True
     _ = locals()  # make flake8 happy
     del _
