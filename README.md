@@ -3,11 +3,7 @@
 ## Installation
 First clone this repository.
 We use [`poetry`](https://python-poetry.org/) to manage dependencies.
-You will also need Mujoco. `mujoco_py` is installed as part of our
-environment (see below) but its
-[installation and troubleshooting instructions](https://github.com/openai/mujoco-py)
-might still be helpful.
-Once Mujoco is installed, you can reproduce our environment with
+You can reproduce our environment with
 ```
 poetry install
 pip install git+https://github.com/HumanCompatibleAI/imitation
@@ -16,8 +12,9 @@ pip install git+https://github.com/HumanCompatibleAI/imitation
 virtual environment.
 Use `poetry shell` to start a shell inside this virtual environment.
 
-Note on the python version: make sure that your installation of `imitation`
-and of `reward_preprocessing` use the same version of Python, otherwise
+Note on the python version: if you use a separate installation of `imitation`
+for creating reward models, then make sure that your environment for `imitation`
+and for `reward_preprocessing` use the same version of Python, otherwise
 you might run into issues when unpickling `imitation` models for use in
 `reward_preprocessing`.
 
@@ -26,26 +23,12 @@ In the long term, `imitation` should just be part of `pyproject.toml`.
 
 ## Docker
 You can also use our [Docker image](https://hub.docker.com/repository/docker/ejenner/reward_preprocessing)
-instead of the installation procedure described above. However, note that the
-Mujoco key file in `/root/.mujoco/mjkey.txt` is empty in the image, you will need
-to enter a valid license key there.
+instead of the installation procedure described above.
 
 If you use the `latest` tag of the image, you will get an image that already
-includes the code and is ready to go (except for the Mujoco key). You can also mount
+includes the code and is ready to go. You can also mount
 the code into the Docker image from your local disk instead (e.g. for development purposes).
-In that case, we suggest you use `scripts/start_docker.sh`. More specifically:
-- Set the `MUJOCO_KEY_URL` environment variable to a URL that returns a Mujoco key
-  when accessed
-- Set the `REWARD_PREPROCESSING_DIR` environment variable to the path to this
-  repository on your machine
-- Make sure you've pulled the `dependencies` tag of the Docker image
-- If you have Docker set up such that it requires root privileges,
-  you'll need to turn `docker run` in `scripts/start_docker.sh` into `sudo docker run`
-- Now run `scrips/start_docker.sh`. This will create and start a Docker
-  container and set up a few things (such as the Mujoco key). You then get
-  an interactive shell inside the Docker container. This repository will be
-  mounted to `/reward_preprocessing` inside the container.
-  
+ 
 Note: you mustn't have a `.venv/` virtual environment inside this repository
 if you want to mount it into the container this way. `poetry` will use the mounted repository otherwise.
 By default, `poetry` creates virtual environments in a separate
@@ -56,13 +39,7 @@ Alternatively, you can change
 to `false` on the Docker container.
 
 `ci/docker.sh` is a helper script to build the Docker image, test it, and then
-push it to DockerHub. You will need to set the `MUJOCO_KEY_URL` environment variable
-again, e.g.:
-```
-MUJOCO_KEY_URL="https://..." ci/docker.sh
-```
-(the URL isn't needed to build the Docker image, but it's needed to test whether
-Mujoco was installed correctly in the image).
+push it to DockerHub.
 
 ## Running experiments
 The experimental pipeline consists of three to four steps:

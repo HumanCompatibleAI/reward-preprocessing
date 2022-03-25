@@ -399,7 +399,7 @@ scikit-image = "*"
 type = "git"
 url = "https://github.com/ejnnr/mazelab"
 reference = "master"
-resolved_reference = "236eef5f7c41b86bb784f506fe1a2e0700a2e48f"
+resolved_reference = "99a5039744fd90497d8e2d5a39aed671bcb71248"
 
 [[package]]
 name = "mccabe"
