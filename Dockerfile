@@ -3,6 +3,10 @@ FROM python:3.7.11-slim as dependencies
 ARG DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    gcc \
+    g++ \
+    libc6-dev \
     # git is needed by Sacred
     git \
     && rm -rf /var/lib/apt/lists/*
