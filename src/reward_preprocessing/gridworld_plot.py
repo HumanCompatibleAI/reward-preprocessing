@@ -159,7 +159,6 @@ def _reward_draw(
         cell into the adjacent cell.
         edgecolor: color of edges.
     """
-    # optimal_actions = optimal_mask(state_action_reward, discount)
     optimal_actions = np.zeros_like(state_action_reward, dtype=bool)
 
     circle_radius_pt = matplotlib.rcParams.get("font.size") * 0.4
@@ -189,7 +188,6 @@ def _reward_draw(
             x, y, action, optimal, reward, from_dest, mappable, annot_padding, ax
         )
 
-        hatch = "xx" if optimal else None
         if action == Actions.STAY:
             fn = functools.partial(_make_circle, radius=circle_radius_data[0])
         else:
