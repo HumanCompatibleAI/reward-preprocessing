@@ -8,7 +8,7 @@ use_config(train_rl_ex)
 
 @train_rl_ex.named_config
 def empty_maze_10():
-    env_name = "reward_preprocessing/EmptyMaze10-v0"
+    common = dict(env_name="reward_preprocessing/EmptyMaze10-v0")
     total_timesteps = int(5e5)
     normalize = False
     locals()  # make flake8 happy
@@ -16,7 +16,7 @@ def empty_maze_10():
 
 @train_rl_ex.named_config
 def empty_maze_4():
-    env_name = "reward_preprocessing/EmptyMaze4-v0"
+    common = dict(env_name="reward_preprocessing/EmptyMaze4-v0")
     total_timesteps = int(1e5)
     normalize = False
     locals()  # make flake8 happy
